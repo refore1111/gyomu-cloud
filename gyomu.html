@@ -1,0 +1,1316 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}[hidden]{display:none!important}img{max-width:100%}</style>
+<title>Refore 業務クラウド</title>
+</head><body>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=BIZ+UDPGothic:wght@400;700&family=Barlow+Condensed:wght@500;600&display=swap">
+<style>
+/* Layout: 上に濃紺の帯と画面タブ、下に表。Numbersの収支一覧と同じ並び（8月始まり・四半期小計）で数字を読む業務画面 */
+:root{
+  --bg:#F2F4F7; --surface:#FFFFFF; --ink:#18212C; --muted:#5A6573; --line:#D6DCE4; --tint:#E9EEF5; --tint2:#F6F8FB;
+  --brand:#1F3A5F; --on-brand:#F4F6F8; --on-brand-muted:#A9BBD1; --link:#2F5487;
+  --accent:#E8B21C; --accent-ink:#7A5600; --accent-soft:#FDF3D6;
+  --good:#2C7A4B; --good-soft:#E3F2E9; --bad:#B03A3A; --bad-soft:#F8E4E4; --warn:#9A6200; --warn-soft:#FBEFD9;
+  --prev:#A9B6C6;
+  --f-display:'Zen Kaku Gothic New','Hiragino Sans','Yu Gothic',sans-serif;
+  --f-body:'BIZ UDPGothic','Hiragino Sans','Yu Gothic',Meiryo,sans-serif;
+  --f-num:'Barlow Condensed','BIZ UDPGothic',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1620; --surface:#16212D; --ink:#E5EAF0; --muted:#9AA8B8; --line:#2A394B; --tint:#1C2A3A; --tint2:#131D28;
+  --brand:#0B1826; --on-brand:#E5EAF0; --on-brand-muted:#8EA3BC; --link:#9DBCE6;
+  --accent:#E8B21C; --accent-ink:#F2CB5C; --accent-soft:#3A3014;
+  --good:#6BC191; --good-soft:#173527; --bad:#EE8A8A; --bad-soft:#3F1C1C; --warn:#E6B05A; --warn-soft:#3A2C12; --prev:#4B5D73;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1620; --surface:#16212D; --ink:#E5EAF0; --muted:#9AA8B8; --line:#2A394B; --tint:#1C2A3A; --tint2:#131D28;
+  --brand:#0B1826; --on-brand:#E5EAF0; --on-brand-muted:#8EA3BC; --link:#9DBCE6;
+  --accent:#E8B21C; --accent-ink:#F2CB5C; --accent-soft:#3A3014;
+  --good:#6BC191; --good-soft:#173527; --bad:#EE8A8A; --bad-soft:#3F1C1C; --warn:#E6B05A; --warn-soft:#3A2C12; --prev:#4B5D73;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.55;min-height:100%}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;margin:0;line-height:1.3;text-wrap:balance}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+header.top{background:var(--brand);color:var(--on-brand);padding-block:14px 0;padding-inline:clamp(16px,3vw,32px);display:flex;flex-direction:column;gap:10px}
+.brandrow{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline;justify-content:space-between}
+.brandrow b{font-family:var(--f-display);font-size:19px;letter-spacing:.03em}
+.brandrow b i{display:inline-block;width:6px;height:18px;background:var(--accent);border-radius:2px;margin-right:10px;vertical-align:-3px}
+.brandrow span{font-size:12px;color:var(--on-brand-muted)}
+#gate a{color:var(--link)}
+#gate{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;z-index:50;padding:16px}
+.gate-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:28px;width:min(380px,100%);display:flex;flex-direction:column;gap:14px}
+.gate-card b{font-family:var(--f-display);font-size:20px}
+.kibtn{background:rgba(255,255,255,.1);border:0;color:var(--on-brand);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:16px;line-height:1}
+.kibtn:hover{background:rgba(255,255,255,.2)}
+#extraNav a{color:var(--on-brand-muted);font-size:12px;margin-left:8px}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.tabs button{background:none;border:0;color:var(--on-brand-muted);padding:10px 14px;border-radius:8px 8px 0 0;cursor:pointer;white-space:nowrap;font-weight:700}
+.tabs button:hover{color:var(--on-brand)}
+.tabs button[aria-current="page"]{background:var(--bg);color:var(--ink)}
+main{padding-block:22px 64px;padding-inline:clamp(16px,3vw,32px);display:flex;flex-direction:column;gap:18px;min-width:0}
+.head{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:space-between}
+.head h1{font-size:24px}
+.head>*{min-width:0}
+.eyebrow{font-size:12px;color:var(--link);font-weight:700;letter-spacing:.14em}
+.grid{display:grid;gap:14px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel h2{font-size:16px}
+.ph{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.kpi{gap:2px}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi .v{font-size:32px;font-weight:600;line-height:1.1}
+.kpi .s{font-size:12px;color:var(--muted)}
+.up{color:var(--good)} .down{color:var(--bad)}
+.two{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
+.tw{overflow-x:auto;border-radius:8px}
+main .tw table{border-collapse:collapse;width:100%;font-size:13px}
+.tw th{font-size:11px;color:var(--muted);font-weight:700;text-align:right;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface);position:sticky;top:0}
+.tw th.l,.tw td.l{text-align:left}
+.tw td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-family:var(--f-num);font-size:15px;font-variant-numeric:tabular-nums}
+.tw td.t{font-family:var(--f-body);font-size:13px;white-space:normal;min-width:180px;text-align:left}
+.tw td.c,.tw th.c{text-align:center}
+.tw tr.sub td{background:var(--tint);font-weight:600}
+.tw tr.tot td{background:var(--brand);color:var(--on-brand);font-weight:600}
+tr.click{cursor:pointer}
+.tw tr.click:hover td{background:var(--tint2)}
+.tw tr.muted td{color:var(--muted)}
+.pill{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;padding:1px 8px;font-family:var(--f-body)}
+.p-good{background:var(--good-soft);color:var(--good)} .p-warn{background:var(--warn-soft);color:var(--warn)} .p-plain{background:var(--tint);color:var(--muted)} .p-acc{background:var(--accent-soft);color:var(--accent-ink)} .p-bad{background:var(--bad-soft);color:var(--bad)}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:700;font-size:13px}
+.btn:hover{border-color:var(--link)}
+.btn.primary{background:var(--link);border-color:var(--link);color:var(--surface)}
+.btn.sm{padding:3px 9px;font-size:12px}
+.btn.danger{color:var(--bad)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:4px 12px;cursor:pointer;font-size:13px;font-weight:700}
+.chip[aria-pressed="true"]{background:var(--brand);color:var(--on-brand);border-color:var(--brand)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.filters select,.filters input{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 9px;min-width:0}
+.filters input{flex:1 1 200px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+svg.chart text{fill:var(--muted);font-size:11px;font-family:var(--f-body)}
+.bars{display:flex;flex-direction:column;gap:9px}
+.br{display:grid;grid-template-columns:118px minmax(0,1fr) 92px;gap:10px;align-items:center;font-size:13px}
+.br .tr{height:10px;background:var(--tint);border-radius:99px;overflow:hidden}
+.br .fl{height:100%;background:var(--link);border-radius:99px}
+.br .v{text-align:right;font-family:var(--f-num);font-size:15px}
+.note{font-size:12px;color:var(--muted)}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.check{width:16px;height:16px;accent-color:var(--good)}
+/* 編集パネル */
+.drawer{position:fixed;inset:0;background:rgba(10,18,28,.45);display:flex;justify-content:flex-end;z-index:20}
+.drawer .sheet{background:var(--surface);width:min(560px,100%);height:100%;overflow-y:auto;padding:20px;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px;box-shadow:-10px 0 30px rgba(0,0,0,.2)}
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.f{display:flex;flex-direction:column;gap:3px;min-width:0}
+.f.w{grid-column:1/-1}
+.f label{font-size:11px;color:var(--muted);font-weight:700}
+.f input.check{width:16px;flex:none}
+.f input,.f select,.f textarea{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 9px;width:100%;min-width:0}
+.orow{display:grid;grid-template-columns:minmax(0,1fr) 120px 30px;gap:6px}
+.orow input{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 8px;min-width:0;width:100%}
+.x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:18px}
+.sum{display:grid;grid-template-columns:1fr auto;gap:4px 14px;background:var(--tint2);border-radius:8px;padding:12px 14px}
+.sum span:nth-child(even){text-align:right;font-family:var(--f-num);font-size:16px}
+.sum .big{font-weight:700}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 18px;border-radius:99px;font-weight:700;z-index:30}
+.paycell{width:96px;border:1px solid transparent;background:transparent;text-align:right;font-family:var(--f-num);font-size:15px;padding:3px 5px;border-radius:6px}
+.paycell:hover,.paycell:focus{border-color:var(--line);background:var(--surface)}
+.diff{color:var(--warn);font-size:12px}
+.docgrid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
+.pvpanel{position:sticky;top:calc(10px + env(safe-area-inset-top,0px))}
+.pvbox{overflow:hidden;position:relative;background:#fff;border-radius:4px;box-shadow:0 6px 20px rgba(20,35,55,.12)}
+.pvscale{transform-origin:0 0;width:794px}
+table.rows td{padding:3px 4px;font-size:14px}
+table.rows input{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:5px 6px;font-family:var(--f-body);font-size:13px;min-width:0;width:100%}
+.docpills{display:flex;gap:3px;flex-wrap:wrap;justify-content:flex-start}
+.docbtn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--f-body);color:var(--link);white-space:nowrap}
+.docbtn:hover{border-color:var(--link)}
+@media (max-width:1100px){.docgrid{grid-template-columns:minmax(0,1fr)}.pvpanel{position:static}}
+@media (max-width:860px){.two{grid-template-columns:minmax(0,1fr)}.form{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="brandrow"><b><i></i>Refore 業務クラウド</b><span style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0"><button class="kibtn" data-ki="-1" aria-label="前の期">‹</button><span id="fyLabel">第4期 2026年8月〜2027年7月</span><button class="kibtn" data-ki="1" aria-label="次の期">›</button><span id="extraNav"></span></span></div>
+  <nav class="tabs" id="tabs" aria-label="画面"></nav>
+</header>
+<main id="main"><div class="panel empty">データを読み込んでいます…</div></main>
+<div id="drawerHost"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ===== 業務クラウド：会社ごとのデータ（自前のFirebase）と、職人マッチングからの取り込み =====
+   データは tenants/{会社ID}/ の下に、ポータルの収支と同じ形（ledger・estimates・master）で保存します。
+   職人マッチングとは、APIキーで「連携の受け口（Cloudflare Workers）」を呼んでつなぎます。 */
+// ↓↓↓ 業務クラウド用に作ったFirebaseプロジェクトの設定を貼り付けます（手順書の「2」） ↓↓↓
+const GC_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBQ6NyiLZoo71cCdjb1D6kH3i57Bzj62F4",
+  authDomain: "gyomu-cloud.firebaseapp.com",
+  projectId: "gyomu-cloud",
+  storageBucket: "gyomu-cloud.firebasestorage.app",
+  messagingSenderId: "182117206060",
+  appId: "1:182117206060:web:45b22d4f20b41b75a0e989",
+  measurementId: "G-7BLLCXZXQS"
+};
+// ↑↑↑ ここまで ↑↑↑
+const KI_BASE_YEAR=2022;
+const GC=(()=>{
+  const curMonth=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`};
+  const kiOfMonth=ym=>{const[y,m]=ym.split("-").map(Number);return (m>=8?y:y-1)-KI_BASE_YEAR};
+  const kiNow=()=>kiOfMonth(curMonth());
+  const ymOf=(ki,m)=>`${ki+KI_BASE_YEAR+(m<8?1:0)}-${String(m).padStart(2,"0")}`;
+  const isoMonth=ms=>{const d=new Date(ms);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`};
+  const coKey=s=>String(s||"").replace(/[\s　]/g,"").toLowerCase().replace("nワークス","nworks");
+  const cidOf=k=>"c_"+Array.from(k||"_").map(ch=>ch.codePointAt(0).toString(36)).join("");
+  const rid=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const raw={ledger:new Map(),est:new Map(),master:{},tenant:null};
+  const loaded={ledger:false,est:false,master:false,tenant:false};
+  let fdb=null,user=null,tid=null,derived=null,listening=false,syncing=false,syncMsg="",syncTimer=null;const subs=new Set();const unsubs=[];
+  const M=n=>raw.master[n]||{};
+  const T=()=>fdb.collection("tenants").doc(tid);
+
+  /* --- 行（職人マッチングから来た行は「自動」：発注先と金額はマッチングの内容） --- */
+  function toJob(r,fee,rate){
+    const portal=r.source==="portal";
+    const month=r.month||(portal?r.portalMonth||"":"");
+    const net=r.netOv??Math.round((Number(r.contract)||0)*(1-fee/100));
+    const orders=portal?[...(r.portalVendors||[]).map(v=>({v:v.name,a:Number(v.amount)||0,auto:true})),...(r.extraVendors||[]).map(v=>({v:v.name,a:Number(v.amount)||0}))]:(r.vendors||[]).map(v=>({v:v.name,a:Number(v.amount)||0}));
+    return {fy:month?kiOfMonth(month):(Number(r.ki)||kiNow()),m:month?Number(month.slice(5)):null,no:r.jobNo||null,name:r.name||"",amt:Number(r.contract)||null,net:r.netOv??null,
+      te:portal?true:!!r.arranged,done:portal?!!r.portalDone:!!r.done,kind:r.kind||"",tachi:r.staff||"",zatsu:r.staff2||"",
+      zatsuAmt:r.staff2FeeOv!=null?Number(r.staff2FeeOv):(r.staff2&&r.contract?Math.round(net*rate/100):0),tachiOv:r.staffFeeOv??null,orders,
+      memo:r.note||(portal&&r.portalStatus?`職人マッチング：${r.portalStatus}`:""),address:r.address||"",building:r.building||"",room:r.room||"",keyInfo:r.keyInfo||"",autolock:r.autolock||"",elevator:r.elevator||"",contact:r.contact||"",auto:portal,jobId:portal?r.portalJobId:"",stage:r.stage||"",estimateId:r.estimateId||"",deleted:false};
+  }
+  function derive(){
+    const cfg=M("ledger"),fees=cfg.fees||{},rate=cfg.staffRate??0.5,hist=M("ledger_history");
+    const rows=[...raw.ledger.values()],cl=new Map();
+    const add=name=>{const k=coKey(name)||"_";if(!cl.has(k))cl.set(k,{id:cidOf(k),key:k,name:name||"（取引先未設定）",rate:0,jobs:{},prev3:{},n:0});return cl.get(k)};
+    Object.keys(fees).forEach(add);(cfg.clients||[]).forEach(add);
+    const rowById=new Map();
+    for(const r of rows){const c=add(r.company);const fee=Number(Object.entries(fees).find(([k])=>coKey(k)===c.key)?.[1])||0;c.jobs[r.id]=toJob(r,fee,rate);c.n++;rowById.set(r.id,r)}
+    for(const c of cl.values()){c.rate=(Number(Object.entries(fees).find(([k])=>coKey(k)===c.key)?.[1])||0)/100;c.prev3=hist.clients?.[c.name]?.[String(kiNow()-1)]||{}}
+    if(!cl.size)add("");
+    const order=(cfg.clientOrder||[]).map(coKey);
+    [...cl.values()].sort((a,b)=>{const ia=order.indexOf(a.key),ib=order.indexOf(b.key);return (ia<0?999:ia)-(ib<0?999:ib)||b.n-a.n}).forEach((c,i)=>c.order=i);
+    const byId=new Map([...cl.values()].map(c=>[c.id,c]));
+    const docs={};
+    for(const c of cl.values())for(const id of Object.keys(c.jobs)){const r=rowById.get(id);const e=r.estimateId?raw.est.get(r.estimateId):null;
+      if(e||r.kanriOrders||r.receipt){const{rows:er=[],...rest}=e||{};docs[c.id+"__"+id]={orders:r.kanriOrders||{},receipt:r.receipt||{}};if(e)docs[c.id+"__"+id].est={...rest,rows:er.filter(x=>x&&(x.name||x.noteRow||x.loc||x.price))}}}
+    const pays={};for(const[k,v]of Object.entries(raw.master))if(/^pay_\d+$/.test(k))pays["fy"+k.slice(4)]=v;
+    const bill=M("billing"),kan=M("company"),staffItems=M("staff").items||[];
+    const settings={fy:kiNow(),startMonth:8,staffRate:(cfg.staffRate??0.5)/100,staff:staffItems.map(s=>s.name).filter(Boolean),kinds:cfg.kinds||["原状回復","修繕","リフォーム","フルリノベ","追加工事","その他"],alias:cfg.alias||{}};
+    const company={name:raw.tenant?.name||"",...kan,...(bill.bank!=null?{bank:bill.bank}:{}),...(bill.invoiceNumber!=null?{invoiceNumber:bill.invoiceNumber}:{}),...(bill.terms?{terms:bill.terms}:{}),...(bill.validity?{validity:bill.validity}:{}),staffList:staffItems.map(s=>({name:s.name,phone:s.phone||""}))};
+    derived={clients:byId,rowById,docs,pays,settings,company,seal:M("seal").data||"",history:{fys:hist.fys||{},clients:hist.clients||{}}};
+  }
+  let emitT=null;function emit(){if(!Object.values(loaded).every(Boolean))return;clearTimeout(emitT);emitT=setTimeout(()=>{derive();subs.forEach(f=>f())},60)}
+  const snapDoc=(id,data)=>({id,exists:data!=null,data:()=>data??undefined,metadata:{fromCache:false,hasPendingWrites:false}});
+  const snapCol=list=>({docs:list.map(([id,d])=>snapDoc(id,d)),size:list.length,empty:!list.length,docChanges:()=>[],metadata:{fromCache:false,hasPendingWrites:false}});
+  function readCol(path){const d=derived;if(path==="clients")return [...d.clients.values()].map(c=>[c.id,c]);if(path==="docs")return Object.entries(d.docs);if(path==="pay")return Object.entries(d.pays);return []}
+  function readDoc(path){const d=derived,[col,id]=path.split("/");
+    if(col==="clients")return d.clients.get(id)||null;if(col==="pay")return d.pays[id]||null;
+    if(col==="settings")return id==="main"?d.settings:id==="company"?d.company:id==="seal"?{data:d.seal}:null;
+    if(col==="history")return d.history;if(col==="docs")return d.docs[id]||null;return null}
+
+  /* --- 書き込み --- */
+  const L=id=>T().collection("ledger").doc(id),MD=id=>T().collection("master").doc(id);
+  const DEL=()=>firebase.firestore.FieldValue.delete();
+  async function writeJob(cid,id,p){
+    const c=derived.clients.get(cid);if(!c)throw{code:"invalid_argument",message:"取引先が見つかりません"};
+    const row=raw.ledger.get(id)||null,isAuto=row?.source==="portal";
+    if(p.deleted===true){if(row&&(coKey(row.company)||"_")!==c.key)return;if(!isAuto)await L(id).delete();return}
+    const f={company:c.name==="（取引先未設定）"?"":c.name,updatedAt:Date.now()};
+    if("name" in p&&!isAuto)f.name=String(p.name||"");
+    if("no" in p&&!isAuto)f.jobNo=p.no==null?"":String(p.no);
+    if("amt" in p)f.contract=Number(p.amt)||0;
+    if("net" in p)f.netOv=p.net==null||p.net===""?DEL():Number(p.net);
+    if("kind" in p)f.kind=p.kind||"";
+    if("tachi" in p)f.staff=p.tachi||"";
+    if("zatsu" in p)f.staff2=p.zatsu||"";
+    if("zatsuAmt" in p)f.staff2FeeOv=(p.zatsu??row?.staff2)?Number(p.zatsuAmt)||0:DEL();
+    for(const k of ["address","building","room","keyInfo","autolock","elevator","contact"])if(k in p)f[k]=String(p[k]||"");
+    if("memo" in p&&!(isAuto&&p.memo===`職人マッチング：${row.portalStatus}`))f.note=p.memo||"";
+    if("m" in p||"fy" in p){const ki=Number(p.fy)||kiNow();const mo=p.m?ymOf(ki,Number(p.m)):"";if(!isAuto||row.month||mo!==(row.portalMonth||""))f.month=mo;f.ki=ki}
+    if(!isAuto){if("te" in p)f.arranged=!!p.te;if("done" in p){f.done=!!p.done;f.doneAt=p.done?(row?.doneAt||Date.now()):0}}
+    if("orders" in p){const own=(p.orders||[]).filter(o=>!o.auto&&(o.v||o.a)).map(o=>({name:String(o.v||""),amount:Number(o.a)||0}));if(isAuto)f.extraVendors=own;else f.vendors=own}
+    f.id=id;if(!isAuto&&!row){f.manual=true;f.stage="";f.createdAt=Date.now();f.vendors=f.vendors||[];f.ki=f.ki||kiNow()}
+    await L(id).set(f,{merge:true});
+  }
+  async function writeDocs(key,dw){
+    const id=key.split("__")[1];const row=raw.ledger.get(id);if(!row)throw{code:"invalid_argument",message:"案件が見つかりません"};
+    const now=Date.now(),f={id,updatedAt:now,kanriOrders:dw.orders||{},receipt:dw.receipt||{}};
+    const est=dw.est||{},old=row.estimateId?raw.est.get(row.estimateId):null;
+    if(old||(est.rows||[]).length){
+      const eid=row.estimateId&&old?row.estimateId:rid("est_");
+      const rows=(est.rows||[]).map(r=>({id:r.id||rid("r_"),...r}));
+      await T().collection("estimates").doc(eid).set({...(old||{}),...est,rows,id:eid,ledgerId:id,status:old?.status||"draft",createdAt:old?.createdAt||now,updatedAt:now});
+      f.estimateId=eid;f.estAmount=rows.filter(r=>!r.noteRow).reduce((a,r)=>a+Math.round((Number(r.qty)||0)*(Number(r.price)||0)),0);if(!row.stage)f.stage="est";
+    }
+    await L(id).set(f,{merge:true});
+  }
+  async function write(path,data,mode){
+    const[col,id]=path.split("/");
+    if(col==="clients"){
+      if(mode==="set"){const cfg=M("ledger");await MD("ledger").set({clients:[...new Set([...(cfg.clients||[]),data.name])]},{merge:true});return}
+      if(data.jobs)for(const[jid,p]of Object.entries(data.jobs))await writeJob(id,jid,p);
+      if("rate" in data){const c=derived.clients.get(id);await MD("ledger").set({fees:{[c.name]:Math.round(Number(data.rate)*1000)/10}},{merge:true})}
+      return}
+    if(col==="pay"){await MD("pay_"+id.replace(/^fy/,"")).set(data,{merge:true});return}
+    if(col==="settings"){
+      if(id==="main"){const f={};if(data.alias)f.alias=data.alias;if("staffRate" in data)f.staffRate=Math.round(Number(data.staffRate)*1e5)/1e3;if(data.kinds)f.kinds=data.kinds;if(Object.keys(f).length)await MD("ledger").set(f,{merge:true});
+        if(data.staff){const items=M("staff").items||[];await MD("staff").set({items:data.staff.map(n=>items.find(s=>s.name===n)||{name:n}),updatedAt:Date.now()},{merge:true})}return}
+      if(id==="company"){const{bank,invoiceNumber,terms,validity,staffList,...rest}=data;await MD("billing").set({bank:bank||"",invoiceNumber:invoiceNumber||"",terms:terms||"",validity:validity||""},{merge:true});await MD("company").set(rest,{merge:true});
+        if(staffList){const items=M("staff").items||[];await MD("staff").set({items:staffList.map(s=>({...(items.find(x=>x.name===s.name)||{}),name:s.name,phone:s.phone||""})),updatedAt:Date.now()},{merge:true})}return}
+      if(id==="seal"){await MD("seal").set({data:data.data||"",updatedAt:Date.now()});return}}
+    if(col==="docs"){await writeDocs(id,data);return}
+    if(col==="history"){await MD("ledger_history").set(data,{merge:true});return}
+    throw{code:"invalid_argument",message:"保存先がありません："+path};
+  }
+  const wrap=fn=>async(...a)=>{try{return await fn(...a)}catch(e){throw{code:e.code||"unavailable",message:e.message||String(e)}}};
+  const db={
+    doc:path=>({path,id:path.split("/").pop(),get:async()=>snapDoc(path.split("/").pop(),readDoc(path)),set:wrap(d=>write(path,d,"set")),update:wrap(d=>write(path,d,"update")),delete:async()=>{},
+      onSnapshot:(next)=>{const f=()=>{if(derived)next(snapDoc(path.split("/").pop(),readDoc(path)))};subs.add(f);f();return()=>subs.delete(f)}}),
+    collection:path=>({path,onSnapshot:(next)=>{const f=()=>{if(derived)next(snapCol(readCol(path)))};subs.add(f);f();return()=>subs.delete(f)},doc:id=>db.doc(path+"/"+id)})
+  };
+
+  /* --- 職人マッチングから取り込む --- */
+  const link=()=>M("portal_link");
+  async function callApi(path){
+    const l=link();if(!l.endpoint||!l.key)throw new Error("受け口のURLとAPIキーを入れてください");
+    let r;try{r=await fetch(l.endpoint.replace(/\/+$/,"")+path,{headers:{Authorization:"Bearer "+l.key}})}catch(e){throw new Error("受け口につながりません。URLを確かめてください")}
+    const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.message||("受け口からエラーが返りました（"+r.status+"）"));return j;
+  }
+  async function sync(full){
+    if(syncing||!link().key||!link().endpoint)return;syncing=true;syncMsg="取り込んでいます…";paintLink();
+    try{
+      let since=full?0:Number(link().since)||0,n=0,w=0,guard=0,company="";
+      while(guard++<20){
+        const res=await callApi(`/v1/orders?since=${since}`);company=res.company?.name||company;
+        for(const o of res.orders||[]){
+          const id="p_"+o.jobId,cur=raw.ledger.get(id);
+          const f={id,source:"portal",portalJobId:o.jobId,name:o.title,jobNo:o.jobNo||"",portalVendors:(o.vendors||[]).map(v=>({name:v.name,amount:Number(v.amount)||0,kind:v.kind||""})),
+            portalStatus:o.statusLabel||o.status,portalDone:!!o.done,portalMonth:o.done&&o.completedAt?isoMonth(o.completedAt):"",arranged:true,portalUpdatedAt:o.updatedAt||0,updatedAt:Date.now()};
+          if(!cur){Object.assign(f,{company:o.manager||"",contract:Number(o.contract)||0,kind:o.kind||"",staff:o.staff||"",stage:"won",ki:kiNow(),createdAt:Date.now(),extraVendors:[]})}
+          else if(!Number(cur.contract)&&Number(o.contract))f.contract=Number(o.contract);
+          const site=o.site||{};for(const k of ["address","building","room","keyInfo","autolock","elevator","contact"])if(site[k]&&!String(cur?.[k]||"").trim())f[k]=String(site[k]);
+          await L(id).set(f,{merge:true});n++;
+        }
+        for(const jid of res.withdrawn||[]){const id="p_"+jid,cur=raw.ledger.get(id);if(!cur||cur.portalDone)continue;
+          if(cur.estimateId||Number(cur.contract)||(cur.extraVendors||[]).length){await L(id).set({portalStatus:"発注取り消し",portalVendors:[],updatedAt:Date.now()},{merge:true})}else await L(id).delete();w++}
+        since=Number(res.next)||since;if(!res.more)break;
+      }
+      await MD("portal_link").set({since,lastSyncAt:Date.now(),companyName:company,lastError:""},{merge:true});
+      syncMsg=n||w?`${n}件を取り込みました${w?`（取り消し ${w}件）`:""}`:"新しい案件はありません";
+    }catch(e){syncMsg=e.message;await MD("portal_link").set({lastError:e.message},{merge:true}).catch(()=>{})}
+    finally{syncing=false;paintLink()}
+  }
+  function paintLink(){const e=document.getElementById("linkMsg");if(e)e.textContent=syncMsg}
+  function startAutoSync(){clearInterval(syncTimer);if(link().key&&link().endpoint){sync(false);syncTimer=setInterval(()=>{if(!document.hidden)sync(false)},10*60000)}}
+
+  /* --- 読み込み --- */
+  function listen(){
+    const err=e=>{console.error(e);gate(e.code==="permission-denied"?"この会社のデータを開く権限がありません。":"データを読み込めませんでした："+(e.message||e.code))};
+    unsubs.push(T().onSnapshot(s=>{raw.tenant=s.exists?{id:s.id,...s.data()}:null;loaded.tenant=true;const n=document.getElementById("tenantName");if(n&&raw.tenant)n.textContent=raw.tenant.name;emit()},err));
+    unsubs.push(T().collection("ledger").onSnapshot(s=>{raw.ledger=new Map(s.docs.map(d=>[d.id,{id:d.id,...d.data()}]));loaded.ledger=true;emit()},err));
+    unsubs.push(T().collection("estimates").onSnapshot(s=>{raw.est=new Map(s.docs.map(d=>[d.id,{id:d.id,...d.data()}]));loaded.est=true;emit()},err));
+    let first=true;
+    unsubs.push(T().collection("master").onSnapshot(s=>{raw.master={};s.docs.forEach(d=>raw.master[d.id]=d.data());loaded.master=true;emit();if(first){first=false;startAutoSync()}},err));
+  }
+
+  /* --- ログイン・会社の登録・招待 --- */
+  function gate(msg,mode){let g=document.getElementById("gate");if(!g){g=document.createElement("div");g.id="gate";document.body.appendChild(g)}
+    const login=`<form id="gLogin" class="form" style="grid-template-columns:1fr"><div class="f"><label for="gEmail">メールアドレス</label><input id="gEmail" type="email" autocomplete="username" required></div><div class="f"><label for="gPw">パスワード</label><input id="gPw" type="password" autocomplete="current-password" required></div><button class="btn primary">ログイン</button></form><p class="note">はじめての会社は <a href="#" id="gToSign">新しく登録する</a></p>`;
+    const sign=`<form id="gSign" class="form" style="grid-template-columns:1fr"><div class="f"><label for="sCo">会社名</label><input id="sCo" required placeholder="例：株式会社〇〇"></div><div class="f"><label for="sName">お名前</label><input id="sName" required></div><div class="f"><label for="sEmail">メールアドレス</label><input id="sEmail" type="email" autocomplete="username" required></div><div class="f"><label for="sPw">パスワード（8文字以上）</label><input id="sPw" type="password" minlength="8" autocomplete="new-password" required></div><button class="btn primary">登録してはじめる</button></form><p class="note">登録済みの方は <a href="#" id="gToLogin">ログイン</a></p>`;
+    const newco=`<form id="gNewCo" class="form" style="grid-template-columns:1fr"><div class="f"><label for="nCo">会社名</label><input id="nCo" required></div><button class="btn primary">この会社で使いはじめる</button></form><p class="note">ほかの会社から招待されている場合は、招待した方に「招待」をお願いしてから、もう一度開いてください。<a href="#" class="gOut">ログアウト</a></p>`;
+    g.innerHTML=`<div class="gate-card"><b>Refore 業務クラウド</b><p class="note">${msg||"収支・見積書・請求書・発注書・領収書をまとめて管理します。"}</p>${mode==="sign"?sign:mode==="newco"?newco:mode==="out"?`<button class="btn gOut">ログアウト</button>`:login}<p class="note" id="gErr" role="alert"></p></div>`;g.hidden=false}
+  const authMsg=c=>({"auth/invalid-credential":"メールアドレスかパスワードが違います","auth/email-already-in-use":"このメールアドレスはすでに登録されています。ログインしてください","auth/weak-password":"パスワードは8文字以上にしてください","auth/too-many-requests":"しばらく待ってからもう一度お試しください"}[c]||("うまくいきませんでした（"+c+"）"));
+  let pendingCo=null,pendingName=null;
+  async function createTenant(name){const t=fdb.collection("tenants").doc();await t.set({name,members:{[user.uid]:"owner"},memberNames:{[user.uid]:pendingName||user.email},plan:"trial",createdAt:Date.now()});await fdb.collection("users").doc(user.uid).set({tenantId:t.id,email:user.email,name:pendingName||""},{merge:true});return t.id}
+  document.addEventListener("submit",async e=>{const id=e.target.id;if(!["gLogin","gSign","gNewCo","inviteForm"].includes(id))return;e.preventDefault();e.stopImmediatePropagation();const er=document.getElementById("gErr");
+    try{
+      if(id==="gLogin"){er.textContent="ログインしています…";await firebase.auth().signInWithEmailAndPassword(document.getElementById("gEmail").value.trim(),document.getElementById("gPw").value)}
+      if(id==="gSign"){er.textContent="登録しています…";pendingCo=document.getElementById("sCo").value.trim();pendingName=document.getElementById("sName").value.trim();await firebase.auth().createUserWithEmailAndPassword(document.getElementById("sEmail").value.trim(),document.getElementById("sPw").value)}
+      if(id==="gNewCo"){er.textContent="準備しています…";tid=await createTenant(document.getElementById("nCo").value.trim());boot()}
+      if(id==="inviteForm"){const em=document.getElementById("invEmail").value.trim().toLowerCase();if(!em)return;await fdb.collection("invites").doc(em).set({tenantId:tid,tenantName:raw.tenant?.name||"",invitedBy:user.uid,createdAt:Date.now()});toast(em+" を招待しました。その方が業務クラウドに登録・ログインすると参加します");document.getElementById("invEmail").value=""}
+    }catch(x){if(er)er.textContent=authMsg(x.code);else toast("できませんでした："+(x.code||x.message))}},true);
+  document.addEventListener("click",e=>{const t=e.target;
+    if(t.id==="gToSign"){e.preventDefault();gate("",'sign')}
+    if(t.id==="gToLogin"){e.preventDefault();gate("")}
+    if(t.classList&&t.classList.contains("gOut")||t.id==="kOut"){e.preventDefault();firebase.auth().signOut()}},true);
+  let readyResolve;const ready=new Promise(r=>readyResolve=r);
+  function boot(){const g=document.getElementById("gate");if(g)g.hidden=true;
+    const nav=document.getElementById("extraNav");if(nav)nav.innerHTML=`<span id="tenantName" style="color:var(--on-brand-muted);font-size:12px;margin-left:8px"></span><a href="#" id="kOut">ログアウト</a>`;
+    if(!listening){listening=true;listen();readyResolve()}}
+  function start(){
+    if(/ここに貼り付け/.test(GC_FIREBASE_CONFIG.apiKey)){gate("設定がまだです。gyomu.html の「GC_FIREBASE_CONFIG」に、業務クラウド用Firebaseの設定を貼り付けてください。","out");return}
+    firebase.initializeApp(GC_FIREBASE_CONFIG);fdb=firebase.firestore();
+    firebase.auth().onAuthStateChanged(async u=>{user=u;if(!u){if(listening)location.reload();gate("");return}
+      try{
+        const me=await fdb.collection("users").doc(u.uid).get();tid=me.exists?me.data().tenantId:null;
+        if(!tid){const inv=await fdb.collection("invites").doc((u.email||"").toLowerCase()).get().catch(()=>null);
+          if(inv&&inv.exists){const t=inv.data().tenantId;await fdb.collection("tenants").doc(t).update({["members."+u.uid]:"member",["memberNames."+u.uid]:u.email});await fdb.collection("users").doc(u.uid).set({tenantId:t,email:u.email},{merge:true});await inv.ref.delete().catch(()=>{});tid=t}
+          else if(pendingCo){tid=await createTenant(pendingCo)}}
+        if(!tid){gate(`${u.email} はまだどの会社にも入っていません。`,"newco");return}
+        boot();
+      }catch(x){gate("読み込めませんでした（"+(x.code||x.message)+"）","out")}});
+  }
+
+  /* --- 設定画面に足す部分 --- */
+  function settingsHtml(){
+    const l=link(),t=raw.tenant||{},ed=ST.canEdit;const fmt=ms=>ms?new Date(ms).toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}):"まだ";
+    const mem=Object.entries(t.members||{});
+    return `<div class="grid two">
+    <div class="panel"><div class="ph"><h2>職人マッチングと連携</h2>${l.key?`<span class="pill ${l.lastError?"p-bad":"p-good"}">${l.lastError?"エラー":"連携中"}</span>`:'<span class="pill p-plain">未設定</span>'}</div>
+      <p class="note">職人マッチングで発注・完了した案件と金額、物件の住所・鍵の情報を、自動でこの収支一覧に取り込みます。住所や鍵の欄は、業務クラウドで空いているときだけ入ります。完了確認が済んだ案件は、その月の収支に入ります。開いているあいだは10分ごとに確かめます。</p>
+      <div class="form" style="grid-template-columns:1fr">
+        <div class="f"><label for="lnkUrl">受け口のURL</label><input id="lnkUrl" value="${esc(l.endpoint||"")}" placeholder="https://〇〇.workers.dev" ${ed?"":"disabled"}></div>
+        <div class="f"><label for="lnkKey">APIキー（職人マッチングで発行）</label><input id="lnkKey" value="" placeholder="${l.key?"rk_…"+esc(l.key.slice(-4))+"（入力すると置き換えます）":"rk_ で始まるキー"}" autocomplete="off" ${ed?"":"disabled"}></div></div>
+      ${ed?`<div class="chips"><button class="btn primary" data-ext="lnkSave">保存して接続を確かめる</button>${l.key?`<button class="btn" data-ext="lnkSync">今すぐ取り込む</button><button class="btn" data-ext="lnkFull">はじめから取り込み直す</button><button class="btn danger" data-ext="lnkOff">連携をやめる</button>`:""}</div>`:""}
+      <p class="note">${l.companyName?`連携先：${esc(l.companyName)}　`:""}最後の取り込み：${fmt(l.lastSyncAt)}　<span id="linkMsg">${esc(syncMsg||l.lastError||"")}</span></p></div>
+    <div class="panel"><div class="ph"><h2>会社とメンバー</h2><span class="pill p-acc">${t.plan==="trial"?"お試し中":esc(t.plan||"")}</span></div>
+      <p><b>${esc(t.name||"")}</b></p>
+      <div class="tw"><table>${mem.map(([uid,r])=>`<tr><td class="t">${esc((t.memberNames||{})[uid]||"")}${uid===user.uid?"（あなた）":""}</td><td class="l" style="font-family:var(--f-body);font-size:13px">${r==="owner"?"管理者":"メンバー"}</td></tr>`).join("")}</table></div>
+      ${(t.members||{})[user.uid]==="owner"?`<form id="inviteForm" class="filters"><input id="invEmail" type="email" placeholder="招待する方のメールアドレス" required><button class="btn">招待する</button></form><p class="note">招待した方が、同じメールアドレスで業務クラウドに登録するとメンバーになります。</p>`:""}
+    </div></div>
+    ${/refore/i.test(t.name||"")?`<div class="panel"><div class="ph"><h2>Numbersの収支一覧を取り込む</h2></div><p class="note">4期収支一覧表の案件（394件）、業者支払表、1〜3期の月次の数字を取り込みます。同じ取引先・工事番号・物件名の案件は取り込みません。</p>${ed?`<button class="btn" data-ext="import" style="align-self:flex-start">Numbersの4期データを取り込む</button>`:""}</div>`:""}`;
+  }
+  async function action(k,b){
+    if(k==="lnkSave"){const endpoint=document.getElementById("lnkUrl").value.trim(),key=document.getElementById("lnkKey").value.trim();
+      if(!/^https:\/\//.test(endpoint)){toast("受け口のURLは https:// から入れてください");return}if(key&&!/^rk_[A-Za-z0-9]{20,80}$/.test(key)){toast("APIキーの形が違います（rk_ で始まるキーです）");return}
+      const patch={endpoint,...(key?{key,since:0}:{}),lastError:""};await MD("portal_link").set(patch,{merge:true});raw.master.portal_link={...(raw.master.portal_link||{}),...patch};
+      try{const p=await callApi("/v1/ping");await MD("portal_link").set({companyName:p.company?.name||""},{merge:true});toast(`${p.company?.name||""} とつながりました`);startAutoSync()}catch(e){await MD("portal_link").set({lastError:e.message},{merge:true});toast(e.message)}return}
+    if(k==="lnkSync"){await sync(false);toast(syncMsg);return}
+    if(k==="lnkFull"){await sync(true);toast(syncMsg);return}
+    if(k==="lnkOff"){await MD("portal_link").set({key:"",since:0,lastError:""},{merge:true});raw.master.portal_link={...(raw.master.portal_link||{}),key:""};clearInterval(syncTimer);toast("連携をやめました。取り込んだ案件は残ります");return}
+    if(k==="import"){importSeed(b)}
+  }
+  const normNo=v=>String(v||"").normalize("NFKC").replace(/\s/g,"").toUpperCase(),normName=v=>String(v||"").normalize("NFKC").replace(/\s/g,"");
+  async function importSeed(btn){btn.disabled=true;btn.textContent="取り込んでいます…";
+    try{const seed=await (await fetch("kanri-seed.json",{cache:"no-store"})).json();
+      const have=new Set([...raw.ledger.values()].map(r=>coKey(r.company)+"|"+normNo(r.jobNo)+"|"+normName(r.name)));
+      const rows=seed.rows.filter(r=>!have.has(coKey(r.company)+"|"+normNo(r.jobNo)+"|"+normName(r.name))&&!raw.ledger.has(r.id));
+      for(let i=0;i<rows.length;i+=400){const b=fdb.batch();rows.slice(i,i+400).forEach(r=>b.set(L(r.id),{...r,updatedAt:Date.now()}));await b.commit()}
+      const cfg=M("ledger");await MD("ledger").set({fees:{...seed.cfg.fees,...(cfg.fees||{})},alias:{...seed.cfg.alias,...(cfg.alias||{})},kinds:cfg.kinds||seed.cfg.kinds,clientOrder:cfg.clientOrder||seed.cfg.clientOrder,staffRate:cfg.staffRate??0.5},{merge:true});
+      if(!raw.master.ledger_history)await MD("ledger_history").set(seed.history);
+      for(const[k,v]of Object.entries(seed.pays))if(!raw.master[k])await MD(k).set(v);
+      const items=M("staff").items||[];const add=seed.staff.filter(n=>!items.some(s=>s.name===n));if(add.length)await MD("staff").set({items:[...items,...add.map(n=>({name:n}))],updatedAt:Date.now()},{merge:true});
+      toast(`${rows.length}件を取り込みました`)}catch(e){toast("取り込めませんでした："+(e.code||e.message))}
+    finally{btn.disabled=false;btn.textContent="Numbersの4期データを取り込む"}}
+  return {db,start,ready,settingsHtml,action,get canEdit(){return !!user&&!!tid}};
+})();
+window.claude={use:async n=>{
+  if(n==="db"){await GC.ready;return GC.db}
+  if(n==="user"){await GC.ready;return {canEdit:async()=>GC.canEdit,isOwner:async()=>GC.canEdit}}
+  if(n==="downloads")return {save:async({filename,data})=>{const blob=data instanceof Blob?data:new Blob([data]);const u=URL.createObjectURL(blob);const a=document.createElement("a");a.href=u;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);return {status:"saved"}}};
+  return null}};
+window.extraSettingsHtml=()=>GC.settingsHtml();
+window.extAction=(k,b)=>GC.action(k,b);
+document.addEventListener("DOMContentLoaded",()=>GC.start());
+
+</script>
+<script>
+const MO=[8,9,10,11,12,1,2,3,4,5,6,7];
+const QS=[[8,9,10],[11,12,1],[2,3,4],[5,6,7]];
+const ST={clients:{},payAll:{},ki:0,settings:null,history:null,docs:{},seal:'',canEdit:false,ready:false};
+let view='company', selClient='flextokyo', jf={client:'',m:'',st:'',kind:'',tachi:'',q:''}, staffSel='', drawer=null, db=null;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const yen=n=>(n==null||n==='')?'':Math.round(n).toLocaleString('ja-JP');
+const pct=n=>(n==null||!isFinite(n))?'':(n*100).toFixed(1)+'%';
+const ratio=(a,b)=>(!b||a==null)?null:a/b;
+function toast(t){const e=$('#toast');e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,2400)}
+const fy=()=>ST.ki||ST.settings?.fy||4;
+const yearOf=m=>m>=8?2022+fy():2023+fy();
+const mLabel=m=>`${m}月`;
+function payDate(m){let mm=m+2,y=yearOf(m);if(mm>12){mm-=12;y++}return `${y}/${mm}/10`}
+
+/* ===== 計算（Numbersの式と同じ） ===== */
+function clientsArr(){return Object.entries(ST.clients).map(([id,c])=>({id,...c})).sort((a,b)=>(a.order??99)-(b.order??99))}
+function jobsAll(k){const K=k||fy();const out=[];for(const c of clientsArr()){for(const [id,j] of Object.entries(c.jobs||{})){if(!j||j.deleted)continue;if((j.fy||4)!==K)continue;out.push(calc({...j,id,client:c.id,clientName:c.name},c))}}return out}
+function canon(v){const a=ST.settings?.alias||{};let s=(v||'').trim();return a[s]||s}
+function calc(j,c){
+  const rate=c.rate||0, staffRate=ST.settings?.staffRate??0.005;
+  const has=j.amt!=null&&j.amt!=='';
+  const base=has?(j.net!=null?j.net:j.amt*(1-rate)):null;
+  const orders=(j.orders||[]).filter(o=>o&&(o.v||o.a));
+  const oSum=orders.reduce((s,o)=>s+(+o.a||0),0);
+  const profit=has?base-oSum:null;
+  const tachiAmt=has&&j.tachi?(j.tachiOv!=null?+j.tachiOv:base*staffRate):0;
+  const refore=has?profit-tachiAmt-(+j.zatsuAmt||0):null;
+  return {...j,orders,base,oSum,profit,tachiAmt,refore};
+}
+function agg(list){const cnt=list.length;const sales=list.reduce((s,j)=>s+(j.base||0),0);const profit=list.reduce((s,j)=>s+(j.profit||0),0);const refore=list.reduce((s,j)=>s+(j.refore||0),0);const contract=list.reduce((s,j)=>s+(+j.amt||0),0);return{cnt,sales,profit,refore,contract}}
+async function payWrite(o){const ref=db.doc('pay/fy'+fy());if(!ST.payAll['fy'+fy()])await ref.set({fy:fy(),rows:{}});await ref.update(o)}
+function payNow(){return ST.payAll?.['fy'+fy()]||{rows:{}}}
+function prevMonths(cid){
+  if(!cid&&ST.history?.fys?.[String(fy()-1)])return ST.history.fys[String(fy()-1)];
+  if(cid){const c=ST.clients[cid];const h=ST.history?.clients?.[c?.name];if(fy()===(ST.settings?.fy||4)&&(c?.prev3&&Object.keys(c.prev3).length))return c.prev3;if(h&&h[String(fy()-1)])return h[String(fy()-1)]}
+  const out={};for(const j of jobsAll(fy()-1)){if(!j.m||(cid&&j.client!==cid))continue;const o=out[j.m]||(out[j.m]={cnt:0,sales:0,profit:0,net:0});o.cnt++;o.sales+=j.base||0;o.profit+=j.profit||0}
+  if(!cid){const pr=(ST.payAll?.['fy'+(fy()-1)]||{}).rows||{};for(const m of Object.keys(out)){let oh=0;for(const r of Object.values(pr))if(r&&r.net&&!r.deleted)oh+=+(r.months?.[m]||0);out[m].net=out[m].profit-oh}}
+  return out}
+function overhead(m){const rows=payNow().rows||{};let s=0;for(const r of Object.values(rows)){if(r&&r.net&&!r.deleted)s+=+(r.months?.[m]||0)}return s}
+
+/* ===== 画面 ===== */
+const VIEWS=[['company','全社'],['client','取引先別'],['jobs','案件一覧'],['pay','業者支払表'],['staff','担当者別'],['settings','設定']];
+function renderTabs(){$('#tabs').innerHTML=VIEWS.map(([k,l])=>`<button data-v="${k}" ${k===view||(view==='doc'&&k==='client')?'aria-current="page"':''}>${l}</button>`).join('');$('#fyLabel').textContent=`第${fy()}期 ${yearOf(8)}年8月〜${yearOf(7)}年7月`}
+function render(){
+  renderTabs();
+  if(!ST.ready){return}
+  const fn={company:vCompany,client:vClient,jobs:vJobs,pay:vPay,staff:vStaff,settings:vSettings,doc:vDoc}[view];
+  const ae=document.activeElement;let sel=null,caret=null;
+  if(ae&&ae!==document.body&&$('#main').contains(ae)){if(ae.id)sel='#'+CSS.escape(ae.id);else{const ds=Object.entries(ae.dataset||{});if(ds.length)sel=ds.map(([k,v])=>`[data-${k.replace(/[A-Z]/g,m=>'-'+m.toLowerCase())}="${CSS.escape(v)}"]`).join('')}try{caret=ae.selectionStart}catch(e){}}
+  const y=window.scrollY;$('#main').innerHTML=fn();window.scrollTo(0,y);
+  if(sel){const e=document.querySelector('#main '+sel);if(e){e.focus();try{if(caret!=null)e.setSelectionRange(caret,caret)}catch(x){}}}
+  if(view==='doc')fitPreview();
+}
+function monthTable(rowsFor,cols,opts={}){
+  // rowsFor(m) => object of values; cols: [key,label,fmt,prevKey]
+  let h=`<div class="tw"><table><tr><th class="l">月</th>${cols.map(c=>`<th>${c[1]}</th>`).join('')}</tr>`;
+  const sumRow=(ms,label,cls)=>{const v=rowsFor(ms);return `<tr class="${cls}"><td class="l t" style="min-width:0">${label}</td>${cols.map(c=>`<td>${c[2](v[c[0]],v)}</td>`).join('')}</tr>`};
+  QS.forEach((q,i)=>{q.forEach(m=>{const v=rowsFor([m]);const empty=!v.cnt;h+=`<tr class="${empty?'muted':''}"><td class="l t" style="min-width:0">${yearOf(m)}年${m}月</td>${cols.map(c=>`<td>${empty&&!opts.showEmpty?'':c[2](v[c[0]],v)}</td>`).join('')}</tr>`});h+=sumRow(q,`第${i+1}四半期 合計`,'sub')});
+  h+=sumRow(MO,`第${fy()}期 合計`,'tot');
+  return h+'</table></div>';
+}
+const yoy=(a,b)=>{const r=ratio(a,b);if(r==null)return'';return `<span class="${r>=1?'up':'down'}">${(r*100).toFixed(0)}%</span>`};
+
+function vCompany(){
+  const js=jobsAll().filter(j=>j.m);
+  const prev=prevMonths(null);
+  const rows=ms=>{const a=agg(js.filter(j=>ms.includes(j.m)));const oh=ms.reduce((s,m)=>s+overhead(m),0);const p=ms.reduce((s,m)=>{const x=prev[m];if(x){s.cnt+=x.cnt||0;s.sales+=x.sales||0;s.profit+=x.profit||0;s.net+=x.net||0}return s},{cnt:0,sales:0,profit:0,net:0});return{...a,oh,net:a.profit-oh,avgS:ratio(a.sales,a.cnt),avgP:ratio(a.profit,a.cnt),rate:ratio(a.profit,a.sales),pS:p.sales,pP:p.profit,pN:p.net,pC:p.cnt}};
+  const all=rows(MO);
+  const done=MO.filter(m=>js.some(j=>j.m===m));
+  const ytd=rows(done);
+  const cols=[['cnt','件数',v=>yen(v)],['sales','売上',v=>yen(v)],['pS','前年同期比',(v,r)=>yoy(r.sales,v)],['profit','利益',v=>yen(v)],['rate','利益率',v=>pct(v)],['oh','人件費・固定費',v=>yen(v)],['net','純利益',v=>`<span class="${v<0?'down':''}">${yen(v)}</span>`],['avgS','件数平均売上',v=>yen(v)],['avgP','件数平均利益',v=>yen(v)]];
+  const byClient=clientsArr().map(c=>({c,a:agg(js.filter(j=>j.client===c.id))})).filter(x=>x.a.cnt).sort((a,b)=>b.a.sales-a.a.sales);
+  const mx=Math.max(1,...byClient.map(x=>x.a.sales));
+  return `<div class="head"><div><p class="eyebrow">全社の月次</p><h1>第${fy()}期の収支</h1></div><span class="note">前年同期比は第${fy()-1}期の同じ月との比較です</span></div>
+  <div class="grid kpis">
+    <div class="panel kpi"><span class="l">売上（${done.length}か月累計）</span><span class="v num">¥${yen(ytd.sales)}</span><span class="s">前年同期比 ${yoy(ytd.sales,ytd.pS)||'—'}・${ytd.cnt}件</span></div>
+    <div class="panel kpi"><span class="l">利益</span><span class="v num">¥${yen(ytd.profit)}</span><span class="s">利益率 ${pct(ytd.rate)}・前年同期比 ${yoy(ytd.profit,ytd.pP)||'—'}</span></div>
+    <div class="panel kpi"><span class="l">Refore利益（担当作業金額を引いた後）</span><span class="v num">¥${yen(ytd.refore)}</span><span class="s">立会 ${(ST.settings?.staffRate*100||0.5).toFixed(1)}%・雑工事を差し引き</span></div>
+    <div class="panel kpi"><span class="l">純利益（人件費・固定費を引いた後）</span><span class="v num ${ytd.net<0?'down':''}">¥${yen(ytd.net)}</span><span class="s">業者支払表の対象行を差し引き</span></div>
+  </div>
+  <div class="grid two">
+    <div class="panel"><div class="ph"><h2>月別の売上と利益</h2><div class="legend"><span><i style="background:var(--prev)"></i>前期の売上</span><span><i style="background:var(--link)"></i>今期の売上</span><span><i style="background:var(--accent)"></i>今期の利益</span></div></div>${chart(MO.map(m=>({m,cur:rows([m]),prev:prev[m]})))}</div>
+    <div class="panel"><h2>取引先別の売上（今期）</h2><div class="bars">${byClient.map(x=>`<div class="br"><span>${esc(x.c.name)}</span><div class="tr"><div class="fl" style="width:${x.a.sales/mx*100}%"></div></div><span class="v">${yen(x.a.sales)}</span></div>`).join('')}</div><p class="note">取引先名を押すと取引先別の表を開けます。</p><div class="chips">${byClient.map(x=>`<button class="chip" data-openclient="${x.c.id}">${esc(x.c.name)}</button>`).join('')}</div></div>
+  </div>
+  <div class="panel"><div class="ph"><h2>月次表</h2><span class="note">純利益 ＝ 利益 − 業者支払表で「純利益から引く」にした行</span></div>${monthTable(rows,cols)}</div>`;
+}
+function chart(data){
+  const W=720,H=250,pl=52,pr=8,pt=10,pb=26;
+  const max=Math.max(1,...data.map(d=>Math.max(d.cur.sales||0,d.prev?.sales||0)));
+  const step=max>15e6?5e6:max>6e6?2e6:1e6;const top=Math.ceil(max/step)*step;
+  const iw=W-pl-pr,ih=H-pt-pb,gw=iw/data.length,bw=Math.min(16,gw/3.2);const y=v=>pt+ih-(v/top)*ih;
+  let g='';for(let v=0;v<=top;v+=step)g+=`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${pl-6}" y="${y(v)+4}" text-anchor="end">${v/1e4}万</text>`;
+  let b='',pts=[];
+  data.forEach((d,i)=>{const cx=pl+gw*i+gw/2;const ps=d.prev?.sales||0;b+=`<rect x="${cx-bw-1}" y="${y(ps)}" width="${bw}" height="${pt+ih-y(ps)}" rx="2" fill="var(--prev)"/>`;
+    if(d.cur.cnt){b+=`<rect x="${cx+1}" y="${y(d.cur.sales)}" width="${bw}" height="${pt+ih-y(d.cur.sales)}" rx="2" fill="var(--link)"><title>${d.m}月 売上 ${yen(d.cur.sales)}</title></rect>`;pts.push([cx,y(Math.max(0,d.cur.profit))])}
+    b+=`<text x="${cx}" y="${H-7}" text-anchor="middle">${d.m}月</text>`});
+  const line=pts.length>1?`<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>`:'';
+  const dots=pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="1.5"/>`).join('');
+  return `<div class="tw"><svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" style="min-width:520px" role="img" aria-label="月別の売上と利益">${g}${b}${line}${dots}</svg></div>`;
+}
+
+function vClient(){
+  const cs=clientsArr();const c=cs.find(x=>x.id===selClient)||cs[0];selClient=c.id;
+  const js=jobsAll().filter(j=>j.client===c.id);
+  const prev=prevMonths(c.id);
+  const rows=ms=>{const a=agg(js.filter(j=>j.m&&ms.includes(j.m)));const p=ms.reduce((s,m)=>s+(prev[m]?.sales||0),0);return{...a,avgS:ratio(a.sales,a.cnt),avgP:ratio(a.profit,a.cnt),rate:ratio(a.profit,a.sales),pS:p}};
+  const cols=[['cnt','件数',yen],...(c.rate?[['contract','請負金額',yen]]:[]),['sales',c.rate?`売上（${(c.rate*100).toFixed(0)}%差引後）`:'売上',yen],['pS','前年同期比',(v,r)=>yoy(r.sales,v)],['profit','利益',yen],['refore','利益(Refore)',yen],['avgS','件数平均売上',yen],['avgP','件数平均利益',yen],['rate','利益率',pct]];
+  const open=js.filter(j=>!j.m);
+  return `<div class="head"><div><p class="eyebrow">取引先別</p><h1>${esc(c.name)}</h1></div>${ST.canEdit?`<button class="btn primary" data-new="${c.id}">案件を追加</button>`:''}</div>
+  <div class="chips">${cs.map(x=>`<button class="chip" data-client="${x.id}" aria-pressed="${x.id===c.id}">${esc(x.name)}</button>`).join('')}</div>
+  <div class="panel"><div class="ph"><h2>月次表</h2>${c.rate?`<span class="note">売上は請負金額から${(c.rate*100).toFixed(0)}%を引いた金額です</span>`:''}</div>${monthTable(rows,cols)}</div>
+  <div class="panel"><div class="ph"><h2>工事一覧</h2><span class="note">${js.length}件（未完了 ${open.length}件）</span></div>${jobTable(js.sort(sortJobs),false)}</div>`;
+}
+function docPills(j){const d=ST.docs[j.client+'__'+j.id];const has=d&&d.est&&(d.est.rows||[]).length;const no=d?Object.keys(d.orders||{}).length:0;
+  return `<div class="docpills"><button class="docbtn" data-docs="${j.client}|${j.id}">${has?`見積 ${yen(estTotals(d.est).sub)}`:'書類を作る'}</button>${no?`<span class="pill p-plain">発注書 ${no}</span>`:''}</div>`}
+function sortJobs(a,b){const ia=a.m?MO.indexOf(a.m):99,ib=b.m?MO.indexOf(b.m):99;return ib-ia||String(b.no??'').localeCompare(String(a.no??''),'ja',{numeric:true})}
+function jobTable(js,showClient){
+  if(!js.length)return `<p class="empty">条件に合う案件はありません</p>`;
+  return `<div class="tw"><table><tr><th class="l">完了月</th><th class="l">No.</th><th class="l">物件名称</th>${showClient?'<th class="l">取引先</th>':''}<th>請負金額</th><th>発注合計</th><th>利益</th><th>利益率</th><th>Refore</th><th class="c">手配</th><th class="c">完了</th><th class="l">種類</th><th class="l">立会</th><th class="l">書類</th></tr>
+  ${js.map(j=>`<tr class="click" data-job="${j.client}|${j.id}"><td class="l">${j.m?j.m+'月':'<span class="pill p-warn">未完了</span>'}</td><td class="l">${j.no??''}</td><td class="t">${esc(j.name)}${j.auto?' <span class="pill p-acc">ポータル</span>':''}${j.memo?`<br><span class="note">${esc(j.memo)}</span>`:''}</td>${showClient?`<td class="t" style="min-width:110px">${esc(j.clientName)}</td>`:''}<td>${yen(j.amt)}</td><td>${j.oSum?yen(j.oSum):''}</td><td class="${j.profit<0?'down':''}">${yen(j.profit)}</td><td>${pct(ratio(j.profit,j.base))}</td><td>${yen(j.refore)}</td><td class="c">${j.te?'✓':''}</td><td class="c">${j.done?'✓':''}</td><td class="l"><span class="pill p-plain">${esc(j.kind||'—')}</span></td><td class="l" style="font-family:var(--f-body);font-size:13px">${esc(j.tachi)}</td><td class="l">${docPills(j)}</td></tr>`).join('')}</table></div>`;
+}
+
+function vJobs(){
+  let js=jobsAll();
+  if(jf.client)js=js.filter(j=>j.client===jf.client);
+  if(jf.m)js=js.filter(j=>String(j.m)===jf.m);
+  if(jf.st==='open')js=js.filter(j=>!j.m);if(jf.st==='done')js=js.filter(j=>j.m);if(jf.st==='noorder')js=js.filter(j=>!j.te);
+  if(jf.kind)js=js.filter(j=>j.kind===jf.kind);if(jf.tachi)js=js.filter(j=>j.tachi===jf.tachi);
+  if(jf.q){const q=jf.q.toLowerCase();js=js.filter(j=>(j.name+' '+j.memo+' '+j.orders.map(o=>o.v).join(' ')).toLowerCase().includes(q))}
+  js.sort(sortJobs);const a=agg(js);
+  const st=ST.settings||{};
+  return `<div class="head"><div><p class="eyebrow">全取引先</p><h1>案件一覧</h1></div>${ST.canEdit?`<button class="btn primary" data-new="${selClient}">案件を追加</button>`:''}</div>
+  <div class="panel"><div class="filters">
+    <select id="f_client" aria-label="取引先"><option value="">すべての取引先</option>${clientsArr().map(c=>`<option value="${c.id}" ${jf.client===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
+    <select id="f_m" aria-label="完了月"><option value="">すべての月</option>${MO.map(m=>`<option ${jf.m===String(m)?'selected':''} value="${m}">${m}月</option>`).join('')}</select>
+    <select id="f_st" aria-label="状態"><option value="">すべての状態</option><option value="open" ${jf.st==='open'?'selected':''}>未完了</option><option value="done" ${jf.st==='done'?'selected':''}>完了月あり</option><option value="noorder" ${jf.st==='noorder'?'selected':''}>手配まだ</option></select>
+    <select id="f_kind" aria-label="工事種類"><option value="">すべての種類</option>${(st.kinds||[]).map(k=>`<option ${jf.kind===k?'selected':''}>${esc(k)}</option>`).join('')}</select>
+    <select id="f_tachi" aria-label="立会担当"><option value="">すべての担当</option>${(st.staff||[]).map(k=>`<option ${jf.tachi===k?'selected':''}>${esc(k)}</option>`).join('')}</select>
+    <input id="f_q" type="search" placeholder="物件名・備考・業者で検索" value="${esc(jf.q)}">
+  </div>
+  <p class="note">${a.cnt}件　売上 ${yen(a.sales)}　利益 ${yen(a.profit)}　利益率 ${pct(ratio(a.profit,a.sales))}</p>
+  ${jobTable(js,true)}</div>`;
+}
+
+function vendorFromJobs(m){const out={};for(const j of jobsAll()){if(j.m!==m)continue;for(const o of j.orders){const v=canon(o.v);if(!v)continue;out[v]=(out[v]||0)+(+o.a||0)}}return out}
+function vPay(){
+  const rows=Object.entries(payNow().rows||{}).filter(([,r])=>r&&!r.deleted).map(([id,r])=>({id,...r})).sort((a,b)=>(a.order||0)-(b.order||0));
+  const kinds=['業者','人件費','カード','固定費'];
+  const tot=m=>rows.reduce((s,r)=>s+(+(r.months?.[m])||0),0);
+  const cell=(r,m)=>{const v=r.months?.[m];return ST.canEdit?`<input class="paycell" inputmode="numeric" aria-label="${esc(r.name)} ${m}月度" data-pay="${r.id}|${m}" value="${v?Math.round(v):''}">`:yen(v)};
+  let h=`<div class="tw"><table><tr><th class="l">支払先</th><th class="l">区分</th><th class="c">純利益から引く</th>${MO.map(m=>`<th>${m}月度<br><span style="font-weight:400">${payDate(m)}払</span></th>`).join('')}</tr>
+  <tr class="tot"><td class="l t" style="min-width:0">合計</td><td></td><td></td>${MO.map(m=>`<td>${yen(tot(m))}</td>`).join('')}</tr>`;
+  for(const k of kinds){const rs=rows.filter(r=>r.kind===k);if(!rs.length)continue;
+    h+=`<tr class="sub"><td class="l t" style="min-width:0">${k}</td><td></td><td></td>${MO.map(m=>`<td>${yen(rs.reduce((s,r)=>s+(+(r.months?.[m])||0),0))}</td>`).join('')}</tr>`;
+    h+=rs.map(r=>`<tr><td class="l t" style="min-width:150px">${esc(r.name)}</td><td class="l" style="font-family:var(--f-body);font-size:12px">${ST.canEdit?`<select data-paykind="${r.id}" aria-label="区分">${kinds.map(x=>`<option ${x===r.kind?'selected':''}>${x}</option>`).join('')}</select>`:k}</td><td class="c"><input type="checkbox" class="check" data-paynet="${r.id}" ${r.net?'checked':''} ${ST.canEdit?'':'disabled'} aria-label="${esc(r.name)}を純利益から引く"></td>${MO.map(m=>`<td>${cell(r,m)}</td>`).join('')}</tr>`).join('')}
+  h+='</table></div>';
+  // 案件から集計
+  const months=MO.filter(m=>jobsAll().some(j=>j.m===m));
+  const pm=ST.payM||months[months.length-1]||8;
+  const fromJobs=vendorFromJobs(pm);
+  const byName={};rows.forEach(r=>byName[r.name]=r);
+  const list=Object.entries(fromJobs).sort((a,b)=>b[1]-a[1]);
+  const cmp=`<div class="ph"><h2>案件の発注から集計（${pm}月完了分）</h2><div class="chips">${months.map(m=>`<button class="chip" data-paym="${m}" aria-pressed="${m===pm}">${m}月</button>`).join('')}</div></div>
+  <p class="note">工事一覧に入っている発注金額を、業者名をそろえて合計しました。支払表の金額と違う業者は黄色で示します。業者名のそろえ方は「設定」で変えられます。</p>
+  <div class="tw"><table><tr><th class="l">業者</th><th>案件からの合計</th><th>支払表（${pm}月度）</th><th>差</th>${ST.canEdit?'<th></th>':''}</tr>
+  ${list.map(([v,a])=>{const r=byName[v];const cur=r?+(r.months?.[pm]||0):null;const d=cur==null?null:a-cur;return `<tr><td class="l t" style="min-width:140px">${esc(v)}${r?'':' <span class="pill p-acc">支払表にない</span>'}</td><td>${yen(a)}</td><td>${cur==null?'—':yen(cur)}</td><td>${d?`<span class="diff">${d>0?'+':''}${yen(d)}</span>`:(cur!=null?'<span class="pill p-good">一致</span>':'')}</td>${ST.canEdit?`<td>${d||cur==null?`<button class="btn sm" data-applypay="${esc(v)}|${pm}|${a}">支払表に入れる</button>`:''}</td>`:''}</tr>`}).join('')}</table></div>`;
+  return `<div class="head"><div><p class="eyebrow">締めは月末、支払いは翌々月10日</p><h1>業者支払表</h1></div>${ST.canEdit?`<button class="btn" id="addPayRow">支払先を追加</button>`:''}</div>
+  <div class="panel">${h}<p class="note">${ST.canEdit?'金額を書き換えると、すぐ保存されます。':''}「純利益から引く」にチェックした行は、全社の純利益の計算で差し引きます。</p></div>
+  <div class="panel">${cmp}</div>`;
+}
+
+function vStaff(){
+  const staff=ST.settings?.staff||[];if(!staffSel)staffSel=staff[0]||'';
+  const js=jobsAll().filter(j=>j.m);
+  const kinds=ST.settings?.kinds||[];
+  const rows=ms=>{const l=js.filter(j=>ms.includes(j.m)&&j.tachi===staffSel);const a=agg(l);const k={};kinds.forEach(x=>k[x]=l.filter(j=>j.kind===x).length);const work=l.reduce((s,j)=>s+j.tachiAmt,0);const z=js.filter(j=>ms.includes(j.m)&&j.zatsu===staffSel).reduce((s,j)=>s+(+j.zatsuAmt||0),0);return{...a,rate:ratio(a.profit,a.sales),work,z,...Object.fromEntries(kinds.map(x=>['k_'+x,k[x]]))}};
+  const cols=[['sales','売上',yen],['profit','利益',yen],['cnt','件数',yen],['rate','利益率',pct],['work','立会の作業金額',yen],['z','雑工事の作業金額',yen],...kinds.map(x=>['k_'+x,x,v=>v?yen(v):''])];
+  const all=rows(MO);
+  return `<div class="head"><div><p class="eyebrow">立会担当ごと</p><h1>担当者別</h1></div></div>
+  <div class="chips">${staff.map(s=>`<button class="chip" data-staff="${esc(s)}" aria-pressed="${s===staffSel}">${esc(s)}</button>`).join('')}</div>
+  <div class="grid kpis">
+    <div class="panel kpi"><span class="l">担当した売上</span><span class="v num">¥${yen(all.sales)}</span><span class="s">${all.cnt}件</span></div>
+    <div class="panel kpi"><span class="l">利益</span><span class="v num">¥${yen(all.profit)}</span><span class="s">利益率 ${pct(all.rate)}</span></div>
+    <div class="panel kpi"><span class="l">作業金額の合計</span><span class="v num">¥${yen(all.work+all.z)}</span><span class="s">立会 売上の${((ST.settings?.staffRate||0.005)*100).toFixed(1)}%＋雑工事</span></div>
+  </div>
+  <div class="panel"><h2>${esc(staffSel)}さんの月次表</h2>${monthTable(rows,cols)}</div>`;
+}
+
+function vSettings(){
+  const st=ST.settings||{};const al=Object.entries(st.alias||{}).filter(([,v])=>v).sort((a,b)=>a[1].localeCompare(b[1],'ja'));
+  const names={};jobsAll().forEach(j=>j.orders.forEach(o=>{const v=(o.v||'').trim();if(v)names[v]=(names[v]||0)+1}));
+  const unmapped=Object.entries(names).filter(([n])=>!(st.alias||{})[n]).sort((a,b)=>b[1]-a[1]);
+  const dis=ST.canEdit?'':'disabled';
+  return `<div class="head"><div><p class="eyebrow">設定</p><h1>集計のルール</h1></div></div>
+  <div class="grid two">
+    <div class="panel"><h2>業者名のそろえ方</h2><p class="note">工事一覧で表記がゆれている業者名を、ひとつの名前にまとめて業者支払表と照合します。</p>
+      <div class="tw"><table><tr><th class="l">工事一覧での表記</th><th class="l">まとめる先</th><th></th></tr>${al.map(([k,v])=>`<tr><td class="l t" style="min-width:120px">${esc(k)}</td><td class="l t" style="min-width:120px">${esc(v)}</td><td>${ST.canEdit?`<button class="btn sm danger" data-unalias="${esc(k)}">外す</button>`:''}</td></tr>`).join('')}</table></div>
+      ${ST.canEdit?`<form id="aliasForm" class="form"><div class="f"><label for="al_from">工事一覧での表記</label><input id="al_from" list="dl_names" required></div><div class="f"><label for="al_to">まとめる先</label><input id="al_to" list="dl_pay" required></div><button class="btn primary" type="submit" style="justify-self:start">追加する</button></form>
+      <datalist id="dl_names">${unmapped.map(([n])=>`<option value="${esc(n)}">`).join('')}</datalist><datalist id="dl_pay">${Object.values(payNow().rows||{}).map(r=>`<option value="${esc(r.name)}">`).join('')}</datalist>`:''}
+    </div>
+    <div class="grid" style="align-content:start">
+      <div class="panel"><h2>取引先と差引率</h2><p class="note">請負金額から差し引いて売上にする割合です（例：手数料8%を引かれる取引先は 8）。</p>
+        <div class="tw"><table><tr><th class="l">取引先</th><th>差引率</th></tr>${clientsArr().map(c=>`<tr><td class="l t" style="min-width:140px">${esc(c.name)}</td><td><input class="paycell" style="width:70px" data-rate="${c.id}" value="${((c.rate||0)*100)}" inputmode="decimal" ${dis} aria-label="${esc(c.name)}の差引率">%</td></tr>`).join('')}</table></div>
+        ${ST.canEdit?`<form id="clientForm" class="filters"><input id="nc_name" placeholder="新しい取引先の名前" required><button class="btn" type="submit">取引先を追加</button></form>`:''}
+      </div>
+      <div class="panel"><h2>担当者と作業金額</h2>
+        <div class="form"><div class="f w"><label for="s_staff">立会担当（読点で区切る）</label><input id="s_staff" value="${esc((st.staff||[]).join('、'))}" ${dis}></div>
+        <div class="f"><label for="s_rate">立会の作業金額（売上に対する%）</label><input id="s_rate" value="${(st.staffRate||0.005)*100}" inputmode="decimal" ${dis}></div>
+        <div class="f"><label for="s_kinds">工事種類（読点で区切る）</label><input id="s_kinds" value="${esc((st.kinds||[]).join('、'))}" ${dis}></div></div>
+        ${ST.canEdit?`<button class="btn primary" id="saveSettings" style="align-self:flex-start">保存する</button>`:''}
+      </div>
+    </div>
+  </div>
+  ${companyPanel()}${window.extraSettingsHtml?window.extraSettingsHtml():''}`;
+}
+
+function companyPanel(){const c=COMPANY,dis=ST.canEdit?'':'disabled';const f=(k,l,w)=>`<div class="f${w?' w':''}"><label for="co_${k}">${l}</label><input id="co_${k}" data-co="${k}" value="${esc(c[k]||'')}" ${dis}></div>`;
+  return `<div class="panel"><div class="ph"><h2>書類に載せる自社情報</h2><span class="note">見積書・発注請書・御請求書・発注書・領収書に入ります</span></div>
+  <div class="grid two"><div class="form">${f('name','会社名')}${f('zip','郵便番号')}${f('address','住所',1)}${f('address2','建物名',1)}${f('tel','電話')}${f('fax','FAX')}${f('email','メール')}${f('invoiceNumber','インボイス登録番号（T＋13桁）')}${f('bank','振込先（御請求書に載ります）',1)}${f('terms','管理会社への支払条件',1)}${f('validity','見積有効期限')}${f('orderTerms','業者への支払条件（発注書）')}
+    <div class="f w"><label for="co_staff">工事担当（1行に「名前,電話」）</label><textarea id="co_staff" rows="3" ${dis}>${esc((c.staffList||[]).map(s=>[s.name,s.phone].filter(Boolean).join(',')).join('\n'))}</textarea></div>
+    ${ST.canEdit?`<button class="btn primary" id="saveCompany" style="justify-self:start">自社情報を保存</button>`:''}</div>
+    <div class="f"><label>社印</label><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">${ST.seal?`<img src="${esc(ST.seal)}" alt="登録済みの社印" style="width:80px;height:80px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:8px">`:'<span class="note">未登録</span>'}
+      ${ST.canEdit?`<label class="btn" for="sealFile">画像を選ぶ</label><input id="sealFile" type="file" accept="image/*" hidden>${ST.seal?'<button class="btn danger" id="sealDel">外す</button>':''}`:''}</div><p class="note">背景が白か透明の印影画像（PNG・JPG）。書類の会社名の右に重ねて出ます。</p></div></div></div>`}
+/* ===== 案件の編集 ===== */
+const newJobId=()=>'l_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+async function openJob(cid,id){
+  const c=ST.clients[cid];
+  if(!id){if(!ST.canEdit)return;id=newJobId();const j={fy:fy(),m:null,no:null,name:'新しい案件',amt:null,te:false,done:false,kind:'原状回復',tachi:'',zatsu:'',zatsuAmt:0,orders:[],memo:'',deleted:false,createdAt:Date.now()};
+    drawer={cid,id,origCid:cid,j:{...j,orders:[{v:'',a:0}]},confirmDel:false,isNew:true,state:'saving'};renderDrawer();
+    try{await db.doc('clients/'+cid).update({jobs:{[id]:j}});drawer&&drawer.id===id&&(drawer.state='saved');toast('案件を作成しました');renderSaveState()}catch(e){toast('作成できませんでした：'+(e.code||e.message));drawer=null;renderDrawer()}
+    setTimeout(()=>{const n=document.getElementById('j_name');if(n){n.focus();n.select()}},50);return}
+  const j=c.jobs[id];drawer={cid,id,origCid:cid,j:JSON.parse(JSON.stringify(j)),confirmDel:false,state:'saved'};if(!drawer.j.orders?.length)drawer.j.orders=[{v:'',a:0}];renderDrawer()}
+function renderSaveState(){const e=document.getElementById('saveState');if(!e||!drawer)return;e.textContent={saving:'保存しています…',saved:'保存済み',error:'保存できませんでした'}[drawer.state]||'';e.className='pill '+({saving:'p-warn',saved:'p-good',error:'p-bad'}[drawer.state]||'p-plain')}
+let autoT=null;function queueSave(){if(!drawer||!ST.canEdit)return;drawer.state='saving';renderSaveState();clearTimeout(autoT);autoT=setTimeout(()=>saveJob(true),700)}
+async function closeDrawer(){if(!drawer)return;clearTimeout(autoT);const d=drawer;if(d.state==='saving')await saveJob(true);
+  if(d.isNew&&d.j.name==='新しい案件'&&!d.j.amt&&!(d.j.orders||[]).some(o=>o.v||o.a)){try{await db.doc('clients/'+d.cid).update({jobs:{[d.id]:{deleted:true}}})}catch(e){}}
+  drawer=null;renderDrawer()}
+function renderDrawer(){
+  const host=$('#drawerHost');if(!drawer){host.innerHTML='';return}
+  const d=drawer,j=d.j,c=ST.clients[d.cid]||{};const cj=calc({...j},c);const st=ST.settings||{};const ro=ST.canEdit?'':'disabled';
+  const vendors=new Set();jobsAll().forEach(x=>x.orders.forEach(o=>o.v&&vendors.add(canon(o.v))));
+  host.innerHTML=`<div class="drawer" id="dr"><div class="sheet" role="dialog" aria-modal="true" aria-label="案件">
+  <div class="ph"><h2>${d.isNew?'新しい案件':'案件を編集'}${j.auto?' <span class="pill p-acc">ポータルの案件</span>':''}</h2><div style="display:flex;gap:8px;align-items:center">${ST.canEdit?'<span id="saveState" class="pill p-good">保存済み</span>':''}<button class="btn" id="drClose">閉じる</button></div></div>
+  ${j.auto?`<p class="note">職人マッチングで発注した案件です。物件名と、マッチングで発注した業者・金額はポータル側の内容が入ります。${j.jobId?`<a href="./#/admin/job/${esc(j.jobId)}">ポータルで開く</a>`:''}</p>`:''}
+  <div class="form">
+    <div class="f"><label for="j_client">取引先</label><select id="j_client" ${ro}>${clientsArr().map(x=>`<option value="${x.id}" ${x.id===d.cid?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
+    <div class="f"><label for="j_m">完了月</label><select id="j_m" ${ro}><option value="">未完了</option>${MO.map(m=>`<option value="${m}" ${j.m===m?'selected':''}>${yearOf(m)}年${m}月</option>`).join('')}</select></div>
+    <div class="f"><label for="j_no">工事番号</label><input id="j_no" value="${esc(j.no??'')}" ${j.auto?'disabled':ro}></div>
+    <div class="f"><label for="j_kind">工事種類</label><select id="j_kind" ${ro}><option value="">—</option>${(st.kinds||[]).map(k=>`<option ${j.kind===k?'selected':''}>${esc(k)}</option>`).join('')}</select></div>
+    <div class="f w"><label for="j_name">物件名称</label><input id="j_name" value="${esc(j.name)}" ${j.auto?'disabled':ro}></div>
+    <div class="f"><label for="j_amt">請負金額</label><input id="j_amt" inputmode="numeric" value="${j.amt??''}" ${ro}></div>
+    ${c.rate?`<div class="f"><label for="j_net">売上（空欄なら${(c.rate*100).toFixed(0)}%差引で自動）</label><input id="j_net" inputmode="numeric" value="${j.net??''}" placeholder="${cj.base!=null?Math.round(cj.base):''}" ${ro}></div>`:'<div></div>'}
+    <div class="f"><label for="j_tachi">立会担当</label><select id="j_tachi" ${ro}><option value="">—</option>${(st.staff||[]).map(k=>`<option ${j.tachi===k?'selected':''}>${esc(k)}</option>`).join('')}</select></div>
+    <div class="f"><label>手配・完了</label><div style="display:flex;gap:14px;padding-top:6px"><label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" class="check" id="j_te" ${j.te?'checked':''} ${ro}>手配</label><label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" class="check" id="j_done" ${j.done?'checked':''} ${ro}>完了</label></div></div>
+    <div class="f"><label for="j_zatsu">完了・雑工事の担当</label><select id="j_zatsu" ${ro}><option value="">—</option>${(st.staff||[]).map(k=>`<option ${j.zatsu===k?'selected':''}>${esc(k)}</option>`).join('')}</select></div>
+    <div class="f"><label for="j_zamt">雑工事の作業金額</label><input id="j_zamt" inputmode="numeric" value="${j.zatsuAmt||''}" ${ro}></div>
+  </div>
+  <div class="f"><label>発注</label><div style="display:flex;flex-direction:column;gap:6px">${j.orders.map((o,i)=>`<div class="orow"><input list="dl_v" aria-label="発注業者${i+1}" data-ov="${i}" value="${esc(o.v)}" placeholder="業者名" ${o.auto?'disabled':ro}><input inputmode="numeric" aria-label="発注金額${i+1}" data-oa="${i}" value="${o.a||''}" placeholder="金額" style="text-align:right" ${o.auto?'disabled':ro}>${o.auto?'<span class="pill p-acc" style="align-self:center">自動</span>':ST.canEdit?`<button class="x" data-orm="${i}" aria-label="この発注を削除">×</button>`:''}</div>`).join('')}</div>
+  ${ST.canEdit?`<button class="btn sm" id="addOrder" style="align-self:flex-start;margin-top:4px">発注を追加</button>`:''}<datalist id="dl_v">${[...vendors].map(v=>`<option value="${esc(v)}">`).join('')}</datalist></div>
+  <div class="f"><label>物件の情報 <span class="note">${j.auto?'空いている欄は職人マッチングの内容が入ります':'書類の物件所在地や発注書に使います'}</span></label>
+    <div class="form">
+      <div class="f w"><label for="j_address">物件所在地</label><input id="j_address" value="${esc(j.address||'')}" ${ro}></div>
+      <div class="f w"><label for="j_key">鍵・入室方法</label><input id="j_key" value="${esc(j.keyInfo||'')}" ${ro}></div>
+      <div class="f"><label for="j_al">オートロック</label><input id="j_al" value="${esc(j.autolock||'')}" ${ro}></div>
+      <div class="f"><label for="j_ev">エレベーター</label><input id="j_ev" value="${esc(j.elevator||'')}" ${ro}></div>
+      <div class="f w"><label for="j_contact">連絡事項</label><input id="j_contact" value="${esc(j.contact||'')}" ${ro}></div>
+    </div></div>
+  <div class="f"><label for="j_memo">備考</label><textarea id="j_memo" rows="2" ${ro}>${esc(j.memo)}</textarea></div>
+  <div class="sum"><span>売上</span><span>${yen(cj.base)}</span><span>発注合計</span><span>${yen(cj.oSum)}</span><span class="big">利益（${pct(ratio(cj.profit,cj.base))}）</span><span class="big">${yen(cj.profit)}</span><span>立会の作業金額</span><span>${yen(cj.tachiAmt)}</span><span>雑工事の作業金額</span><span>${yen(+j.zatsuAmt||0)}</span><span class="big">Refore利益</span><span class="big">${yen(cj.refore)}</span></div>
+  ${d.id?`<button class="btn" data-docs="${d.cid}|${d.id}" style="align-self:flex-start">見積書・請求書・発注書・領収書を作る</button>`:''}
+  ${ST.canEdit&&!j.auto?`<div style="display:flex;gap:8px;flex-wrap:wrap"><span class="note" style="align-self:center">入力した内容は自動で保存されます。</span>${d.id?(d.confirmDel?`<button class="btn danger" id="drDelYes">削除する（取り消せません）</button><button class="btn" id="drDelNo">やめる</button>`:`<button class="btn danger" id="drDel">この案件を削除</button>`):''}</div>`:'<p class="note">閲覧のみの権限です。</p>'}
+  </div></div>`;
+}
+function readDrawer(){
+  const j=drawer.j,n=v=>{const x=String(v).replace(/[,，¥\s]/g,'');return x===''?null:Number(x)};
+  const g=id=>document.getElementById(id);
+  if(!g('j_name'))return;
+  drawer.cid=g('j_client').value;j.m=g('j_m').value?+g('j_m').value:null;j.no=g('j_no').value.trim()||null;j.kind=g('j_kind').value;j.name=g('j_name').value;j.amt=n(g('j_amt').value);
+  if(g('j_net'))j.net=n(g('j_net').value);else j.net=null;
+  j.tachi=g('j_tachi').value;j.te=g('j_te').checked;j.done=g('j_done').checked;j.zatsu=g('j_zatsu').value;j.zatsuAmt=n(g('j_zamt').value)||0;j.memo=g('j_memo').value;j.address=g('j_address').value;j.keyInfo=g('j_key').value;j.autolock=g('j_al').value;j.elevator=g('j_ev').value;j.contact=g('j_contact').value;
+  document.querySelectorAll('[data-ov]').forEach(e=>{if(!j.orders[+e.dataset.ov].auto)j.orders[+e.dataset.ov].v=e.value});
+  document.querySelectorAll('[data-oa]').forEach(e=>{if(!j.orders[+e.dataset.oa].auto)j.orders[+e.dataset.oa].a=n(e.value)||0});
+}
+async function saveJob(){
+  if(!drawer)return;if(document.getElementById('j_name'))readDrawer();const d=drawer,j=d.j;
+  if(!String(j.name||'').trim()){d.state='error';renderSaveState();toast('物件名称を入れてください');return}
+  const body={...j,fy:j.fy||fy(),orders:j.orders.filter(o=>o.v||o.a),deleted:false};
+  try{
+    await db.doc('clients/'+d.cid).update({jobs:{[d.id]:body}});
+    if(d.origCid!==d.cid){await db.doc('clients/'+d.origCid).update({jobs:{[d.id]:{deleted:true}}});d.origCid=d.cid}
+    if(drawer===d){d.state='saved';renderSaveState()}
+  }catch(e){if(drawer===d){d.state='error';renderSaveState()}toast('保存できませんでした：'+(e.code||e.message))}
+}
+async function delJob(){const d=drawer;clearTimeout(autoT);try{await db.doc('clients/'+d.origCid).update({jobs:{[d.id]:{deleted:true}}});drawer=null;renderDrawer();toast('削除しました')}catch(e){toast('削除できませんでした')}}
+
+/* ===== 操作 ===== */
+document.addEventListener('click',async ev=>{
+  const b=ev.target.closest('button,tr[data-job]');
+  if(ev.target.id==='dr'){closeDrawer();return}
+  if(!b)return;const d=b.dataset;
+  if(d.ki){ST.ki=fy()+(+d.ki);render();return}
+  if(d.ext&&window.extAction){window.extAction(d.ext,b);return}
+  if(d.v){if(view==='doc'&&dirty&&!(await saveDocs(true)))return;view=d.v;drawer=null;renderDrawer();render();window.scrollTo(0,0);return}
+  if(d.docs){if(drawer){clearTimeout(autoT);if(drawer.state==='saving')await saveJob()}const[c,i]=d.docs.split('|');openDocs(c,i);return}
+  if(d.client){selClient=d.client;render();return}
+  if(d.openclient){selClient=d.openclient;view='client';render();window.scrollTo(0,0);return}
+  if(d.job){const[c,i]=d.job.split('|');openJob(c,i);return}
+  if(d.new!==undefined){openJob(ST.clients[d.new]?d.new:(ST.clients[selClient]?selClient:clientsArr()[0].id),null);return}
+  if(d.staff){staffSel=d.staff;render();return}
+  if(d.paym){ST.payM=+d.paym;render();return}
+  if(b.id==='drClose'){closeDrawer();return}
+  if(b.id==='addOrder'){readDrawer();drawer.j.orders.push({v:'',a:0});renderDrawer();renderSaveState();return}
+  if(d.orm!==undefined){readDrawer();drawer.j.orders.splice(+d.orm,1);if(!drawer.j.orders.length)drawer.j.orders.push({v:'',a:0});renderDrawer();queueSave();return}
+  if(b.id==='drDel'){readDrawer();drawer.confirmDel=true;renderDrawer();return}
+  if(b.id==='drDelNo'){drawer.confirmDel=false;renderDrawer();return}
+  if(b.id==='drDelYes'){delJob();return}
+  if(d.applypay){const[v,m,a]=d.applypay.split('|');const rows=payNow().rows||{};let rid=Object.keys(rows).find(k=>rows[k]?.name===v);
+    try{if(rid)await payWrite({rows:{[rid]:{months:{[m]:+a}}}});else{rid='p'+Date.now().toString(36);await payWrite({rows:{[rid]:{name:v,kind:'業者',net:false,order:999,months:{[m]:+a}}}})}toast(`${v}の${m}月度に入れました`)}catch(e){toast('保存できませんでした')}return}
+  if(b.id==='addPayRow'){const rid='p'+Date.now().toString(36);try{await payWrite({rows:{[rid]:{name:'新しい支払先',kind:'業者',net:false,order:999,months:{}}}});toast('行を追加しました。名前は設定の照合や表で使います')}catch(e){toast('追加できませんでした')}return}
+  if(d.unalias){try{await db.doc('settings/main').update({alias:{[d.unalias]:''}});toast('外しました')}catch(e){toast('保存できませんでした')}return}
+  if(b.id==='saveCompany'){const o={};document.querySelectorAll('[data-co]').forEach(e=>o[e.dataset.co]=e.value.trim());o.staffList=$('#co_staff').value.split('\n').map(l=>l.split(/[,，、]/).map(x=>x.trim())).filter(a=>a[0]).map(a=>({name:a[0],phone:a[1]||''}));try{await db.doc('settings/company').set(o);toast('自社情報を保存しました')}catch(e){toast('保存できませんでした')}return}
+  if(b.id==='sealDel'){try{await db.doc('settings/seal').set({data:''});toast('社印を外しました')}catch(e){toast('保存できませんでした')}return}
+  if(b.id==='saveSettings'){const sp=s=>s.split(/[、,，]/).map(x=>x.trim()).filter(Boolean);try{await db.doc('settings/main').update({staff:sp($('#s_staff').value),kinds:sp($('#s_kinds').value),staffRate:(+$('#s_rate').value||0)/100});toast('保存しました')}catch(e){toast('保存できませんでした')}return}
+});
+document.addEventListener('input',ev=>{const t=ev.target;
+  if(drawer&&t.closest('.sheet')&&t.tagName!=='SELECT'&&t.type!=='checkbox'){readDrawer();queueSave();const s=document.querySelector('.sum');if(s){const c=ST.clients[drawer.cid]||{};const cj=calc({...drawer.j},c);s.innerHTML=`<span>売上</span><span>${yen(cj.base)}</span><span>発注合計</span><span>${yen(cj.oSum)}</span><span class="big">利益（${pct(ratio(cj.profit,cj.base))}）</span><span class="big">${yen(cj.profit)}</span><span>立会の作業金額</span><span>${yen(cj.tachiAmt)}</span><span>雑工事の作業金額</span><span>${yen(+drawer.j.zatsuAmt||0)}</span><span class="big">Refore利益</span><span class="big">${yen(cj.refore)}</span>`}}
+  if(t.id==='f_q'){jf.q=t.value;clearTimeout(window._q);window._q=setTimeout(()=>{render();const e=$('#f_q');if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length)}},250)}
+});
+document.addEventListener('change',async ev=>{const t=ev.target;
+  if(drawer&&t.closest('.sheet')){readDrawer();if(t.tagName==='SELECT'||t.type==='checkbox'){const fid=t.id;renderDrawer();renderSaveState();const e=fid&&document.getElementById(fid);if(e)e.focus()}queueSave();return}
+  const map={f_client:'client',f_m:'m',f_st:'st',f_kind:'kind',f_tachi:'tachi'};if(map[t.id]){jf[map[t.id]]=t.value;render();return}
+  if(t.dataset.pay){const[rid,m]=t.dataset.pay.split('|');const v=t.value.replace(/[,，¥\s]/g,'');try{await payWrite({rows:{[rid]:{months:{[m]:v===''?0:Number(v)}}}});toast('保存しました')}catch(e){toast('保存できませんでした')}return}
+  if(t.dataset.paykind){try{await payWrite({rows:{[t.dataset.paykind]:{kind:t.value}}})}catch(e){toast('保存できませんでした')}return}
+  if(t.dataset.paynet){try{await payWrite({rows:{[t.dataset.paynet]:{net:t.checked}}});toast('保存しました')}catch(e){toast('保存できませんでした')}return}
+  if(t.id==='sealFile'&&t.files[0]){const img=new Image();const url=URL.createObjectURL(t.files[0]);img.onload=async()=>{const s=Math.min(1,300/Math.max(img.width,img.height));const cv=document.createElement('canvas');cv.width=Math.round(img.width*s);cv.height=Math.round(img.height*s);cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);try{await db.doc('settings/seal').set({data:cv.toDataURL('image/png')});toast('社印を登録しました')}catch(e){toast('登録できませんでした')}};img.onerror=()=>toast('画像を読めませんでした');img.src=url;return}
+  if(t.dataset.rate){try{await db.doc('clients/'+t.dataset.rate).update({rate:(+t.value||0)/100});toast('保存しました')}catch(e){toast('保存できませんでした')}return}
+});
+document.addEventListener('submit',async ev=>{ev.preventDefault();const t=ev.target;
+  if(t.id==='aliasForm'){const f=$('#al_from').value.trim(),to=$('#al_to').value.trim();if(!f||!to)return;try{await db.doc('settings/main').update({alias:{[f]:to}});toast(`${f} を ${to} にまとめます`)}catch(e){toast('保存できませんでした')}return}
+  if(t.id==='clientForm'){const n=$('#nc_name').value.trim();if(!n)return;const id='c'+Date.now().toString(36);try{await db.doc('clients/'+id).set({name:n,order:99,rate:0,jobs:{},prev3:{}});toast('取引先を追加しました')}catch(e){toast('追加できませんでした')}return}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drawer)closeDrawer()});
+
+const PDF_CSS = `
+.pdfdoc{width:794px;padding:56px 64px;background:#fff;color:#111;font-family:"BIZ UDPGothic","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",Meiryo,sans-serif;font-size:12.5px;line-height:1.7;box-sizing:border-box}
+.pdfdoc *{box-sizing:border-box}
+.pdfdoc .hd{display:flex;justify-content:flex-end}
+.pdfdoc .meta{border-collapse:collapse;font-size:11.5px}
+.pdfdoc .meta td{border:0;padding:0 0 0 14px;background:none}
+.pdfdoc h1{text-align:center;font-size:26px;letter-spacing:.5em;text-indent:.5em;margin:14px 0 26px;font-weight:700}
+.pdfdoc .parties{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:18px}
+.pdfdoc .to{min-width:320px;font-size:17px;border-bottom:1px solid #111;padding-bottom:4px}
+.pdfdoc .to small{display:block;font-size:11.5px;color:#444}
+.pdfdoc .from{font-size:11.5px;text-align:right;line-height:1.65}
+.pdfdoc .from b{font-size:14px}
+.pdfdoc .total{display:inline-flex;align-items:baseline;gap:20px;border:2px solid #111;padding:8px 18px;margin:6px 0 20px}
+.pdfdoc .total span{font-size:13px}
+.pdfdoc .total strong{font-size:24px}
+.pdfdoc table.t{width:100%;border-collapse:collapse;margin-bottom:16px}
+.pdfdoc table.t th,.pdfdoc table.t td{border:1px solid #666;padding:6px 10px;text-align:left;vertical-align:top}
+.pdfdoc table.t th{background:#eef1f4;font-weight:700;width:22%;white-space:nowrap}
+.pdfdoc table.items th{width:auto;text-align:center}
+.pdfdoc table.items td.loc{white-space:nowrap}
+.pdfdoc table.sum{width:52%;margin-left:auto}
+.pdfdoc table.sum th{width:55%}
+.pdfdoc .r{text-align:right !important;white-space:nowrap}
+.pdfdoc .pre{white-space:pre-wrap}
+.pdfdoc .foot{margin-top:24px;font-size:10.5px;color:#555;border-top:1px solid #bbb;padding-top:8px}
+.pdfdoc.rf{padding:30px 36px 24px;font-size:10.5px;line-height:1.45;color:#222}
+.rf table{border-collapse:collapse}
+.rf .rf-bar{background:#1F78C1;color:#fff;text-align:center;font-size:19px;font-weight:700;letter-spacing:.3em;padding:5px 0}
+.rf .rf-sub{display:flex;justify-content:space-between;font-size:9.5px;margin:4px 0 8px;padding:0 4px}
+.rf .rf-head{display:flex;justify-content:space-between;gap:18px;margin-bottom:16px}
+.rf .rf-left{flex:1}
+.rf .rf-to{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1.5px solid #222;padding:4px 4px 2px;width:330px;margin:6px 0 8px}
+.rf .rf-to.wide{width:100%}
+.rf .rf-to b{font-size:15px}
+.rf .rf-to span{font-size:13px;font-weight:700}
+.rf .rf-greet{margin:0 0 0 10px;font-size:11px;line-height:1.8}
+.rf .rf-from{position:relative;width:300px;font-size:8.5px;line-height:1.65;padding-right:64px;white-space:nowrap}
+.rf .rf-from b{display:block;font-size:14px;font-weight:400;margin-bottom:3px}
+.rf .rf-from .rf-staff{font-size:11px;margin-bottom:3px}
+.rf .rf-memo{position:absolute;left:52px;right:70px;font-size:16px;font-weight:700;line-height:2.2;white-space:pre-wrap;background:rgba(255,255,255,.92);padding:2px 8px}
+.rf .rf-seal{position:absolute;right:0;top:0;width:60px;height:60px;object-fit:contain}
+.rf .rf-info{width:100%;font-size:10px;margin-bottom:6px;border-bottom:1px solid #222}
+.rf .rf-info.small{border-bottom:0;margin:0}
+.rf .rf-info th{text-align:right;font-weight:700;white-space:nowrap;padding:3px 6px;width:1%}
+.rf .rf-info td{padding:4px 6px}
+.rf .rf-info td.rm{text-align:right;white-space:nowrap}
+.rf .rf-items{width:100%;font-size:10px}
+.rf .rf-items th{font-weight:700;padding:5px 4px;border:1px solid #c8c8c8;white-space:nowrap}
+.rf .rf-items.work th{background:#9a9a9a;color:#fff;font-weight:400}
+.rf .rf-items td{border:1px solid #d4d4d4;padding:3px 5px;height:21px}
+.rf .rf-items.work td{height:23px;padding:2px 5px}
+.rf .rf-items td.no{text-align:center;width:22px;color:#444}
+.rf .rf-items .c{text-align:center}
+.rf .rf-items .r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rf .rf-items tr.sum td{font-weight:700;height:26px}
+.rf .rf-wrap{position:relative}
+.rf .rf-ask{position:absolute;left:0;right:0;top:46%;text-align:center;font-size:22px;font-weight:700}
+.rf .rf-deliv{width:100%;border:1px solid #c8c8c8;margin:10px 0 4px;font-size:10px}
+.rf .rf-deliv td{padding:5px 12px;border-right:1px solid #d4d4d4}
+.rf .rf-deliv td.wide{width:55%;border-right:0}
+.rf .rf-cb{display:inline-block;width:12px;height:12px;border:1px solid #555;border-radius:2px;text-align:center;line-height:11px;font-size:10px;vertical-align:-2px;margin-left:4px}
+.rf .rf-label{font-size:12px;margin:6px 0 2px}
+.rf .rf-label.small{font-size:9.5px;margin-top:8px}
+.rf .rf-box{border:1px solid #c8c8c8;padding:5px 8px;min-height:44px}
+.rf .rf-reply{min-height:96px;margin-top:10px}
+.rf .rf-remark{border-top:0;font-size:9.5px;min-height:100px}
+.rf .rf-red{color:#E02020;font-size:13px;font-weight:700;margin-top:6px;white-space:pre-wrap}
+.rf .rf-foot{width:100%;font-size:10px;border:1px solid #888}
+.rf .rf-foot th{text-align:left;font-weight:700;padding:8px;border:1px solid #888;white-space:nowrap}
+.rf .rf-foot td{padding:8px;border:1px solid #888}
+.rf .rf-foot .r{text-align:right;white-space:nowrap}
+.rf .rf-others{width:100%;font-size:9.5px;border:1px solid #444}
+.rf .rf-others td{border:1px solid #444;padding:6px 8px;text-align:center}
+.rf .rf-line{border-top:2px solid #1F78C1;margin-top:18px}
+.pdfwrap .pdfdoc+.pdfdoc{page-break-before:always}
+.pdfdoc.es{padding:34px 38px 26px;font-size:10.5px;line-height:1.45;color:#222;font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","BIZ UDPGothic","Noto Sans JP",Meiryo,sans-serif}
+.es table{border-collapse:collapse}
+.es .es-bar{background:#0B77BD;color:#fff;text-align:center;font-size:22px;font-weight:700;letter-spacing:.2em;padding:7px 0}
+.es .es-sub{display:flex;justify-content:space-between;font-size:10px;margin:4px 4px 8px}
+.es .es-mid{display:flex;justify-content:space-between;gap:16px}
+.es .es-left{flex:1}
+.es .es-to{display:flex;align-items:baseline;gap:10px;font-size:14px;margin:6px 4px 8px}
+.es .es-to .es-co{flex:0 0 auto}
+.es .es-to .es-tan{margin-left:auto}
+.es .es-to .es-person{min-width:110px;text-align:center}
+.es .es-greet{margin:0 4px 6px;font-size:10.5px}
+.es .es-prop{width:100%;font-size:10.5px}
+.es .es-prop th{text-align:left;font-weight:700;white-space:nowrap;padding:7px 6px 5px;width:1%}
+.es .es-prop td{padding:7px 6px 5px;border-bottom:1px solid #222}
+.es .es-prop th{border-bottom:1px solid #222}
+.es .es-prop .es-room,.es .es-prop .es-kind{white-space:nowrap;width:1%;padding-left:14px}
+.es .es-from{position:relative;width:290px;font-size:8.6px;line-height:1.7;padding-right:70px;margin-top:4px}
+.es .es-from b{display:block;font-size:14px;font-weight:400;margin-bottom:2px}
+.es .es-from .es-staff{font-size:10.5px;margin-top:2px;white-space:nowrap}
+.es .es-from .es-tno{font-size:11px;text-align:right;margin-right:-66px;padding-right:72px}
+.es .es-seal{position:absolute;right:0;top:4px;width:64px;height:64px;object-fit:contain}
+.es .es-from.big{width:330px;font-size:11.5px;line-height:1.8;padding-right:78px;margin-left:auto}
+.es .es-from.big .es-seal{top:auto;bottom:0;width:70px;height:70px}
+.es .es-sum{width:100%;border:2px solid #222;margin:12px 0 8px}
+.es .es-sum th{font-weight:700;font-size:11px;text-align:left;padding:10px 14px;white-space:nowrap;width:1%}
+.es .es-sum td{padding:8px 10px}
+.es .es-sum .es-big{font-size:20px;font-weight:700;border-right:1.5px solid #222}
+.es .es-sum .es-taxl{border-right:1.5px solid #222}
+.es .es-sum .r{text-align:right;font-weight:700;font-size:13px;width:34%}
+.es .es-line2{display:flex;justify-content:space-between;font-size:10px;margin:8px 4px 10px;padding-bottom:3px}
+.es .es-line2.under{border-bottom:1px solid #222}
+.es .es-items{width:100%;font-size:10px;border:1px solid #c9ced6}
+.es .es-items thead th{background:#3B7EA6;color:#fff;font-weight:700;padding:4px;border:1px solid #c9ced6;white-space:nowrap}
+.es .es-items td{border:1px solid #d3d7de;padding:2px 5px;height:19px}
+.es .es-items tbody tr:nth-child(even) td{background:#E8ECF1}
+.es .es-items .no{width:24px;text-align:center}
+.es .es-items tbody td.no{text-align:right;padding-right:4px}
+.es .es-items .c{text-align:center;white-space:nowrap}
+.es .es-items .r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.es .es-items td.es-note{color:#333;font-size:9.5px}
+.es .es-items tfoot td{border-top:2px solid #222;font-weight:700;height:22px}
+.es .es-order{border:1.5px dashed #555;margin-top:10px;padding:6px 14px 10px;font-size:11px}
+.es .es-order-h{display:flex;justify-content:space-between}
+.es .es-order-h b{flex:1;text-align:center;font-weight:400}
+.es .es-order p{text-align:center;margin:4px 0 10px}
+.es .es-sign{display:flex;align-items:flex-end;gap:6px;justify-content:center;font-size:13px}
+.es .es-sign i{display:inline-block;width:240px;border-bottom:1px solid #222}
+.es .es-sign i.s{width:60px}
+.es .es-endline{border-top:2px solid #0B77BD;margin-top:14px}
+.es .es-ukefoot{display:flex;justify-content:space-between;align-items:flex-end;margin-top:12px}
+.es .es-ukeleft{font-size:10.5px;line-height:1.9}
+.es .es-ukestaff{text-align:right;font-size:17px;margin-top:4px}
+.es.inv .es-invhead{display:flex;align-items:baseline;gap:30px;margin:6px 0 16px}
+.es.inv .es-invhead .es-to{margin:0;font-size:15px}
+.es.inv .es-invt b{font-size:17px;margin-right:24px}
+.es.inv .es-invt span{font-size:10px}
+.es.inv .es-prop td,.es.inv .es-prop th{border-bottom:0;font-size:12px}
+.es.inv .es-greet{font-size:12px;margin:10px 4px 12px}
+.es.inv .es-billbox{display:flex;justify-content:space-between;border:1.5px solid #222;padding:8px 16px;font-size:13px;width:84%}
+.es.inv .es-billbox b{font-weight:400;font-size:14px;margin-right:30%}
+.es.inv .es-items{margin-top:10px}
+.es.inv .es-items thead th{background:#8E8E8E}
+.es.inv .es-items tbody tr:nth-child(even) td{background:#fff}
+.es.inv .es-items tfoot td,.es.inv .es-items tfoot th{border:0;border-top:0;height:20px;font-size:11px}
+.es.inv .es-items tfoot tr:first-child td,.es.inv .es-items tfoot tr:first-child th{border-top:2px solid #222}
+.es.inv .es-items tfoot th{text-align:right;padding-right:16px}
+.es.inv .es-bank{border:1.5px solid #222;margin-top:8px;padding:7px 12px;font-size:10px;text-align:center}
+.pdfdoc.po{padding:34px 40px 28px;font-size:11px;line-height:1.5;color:#1b2230}
+.po .po-top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #142A5E;padding-bottom:8px;margin-bottom:14px}
+.po .po-title{font-size:26px;font-weight:700;letter-spacing:.35em;color:#142A5E;line-height:1.1}
+.po .po-en{font-size:9px;letter-spacing:.3em;color:#7a8396;margin-top:2px}
+.po table{border-collapse:collapse}
+.po .po-meta th{font-weight:400;color:#5b6475;text-align:left;padding:0 12px 0 0;font-size:10px}
+.po .po-meta td{font-weight:700;text-align:right;font-size:11.5px;padding:0}
+.po .po-parties{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:14px}
+.po .po-to{flex:1}
+.po .po-trade{font-size:11px;color:#5b6475}
+.po .po-name{font-size:18px;font-weight:700;border-bottom:1.5px solid #1b2230;padding-bottom:2px;margin-bottom:6px;display:inline-block;min-width:260px}
+.po .po-lead{margin:0 0 6px;font-size:10.5px;color:#3a4252}
+.po table.po-total{background:#142A5E;border-radius:3px}
+.po table.po-total td{color:#ffffff;padding:6px 16px;vertical-align:middle;white-space:nowrap}
+.po table.po-total td.l{font-size:11px;padding-right:4px}
+.po table.po-total td.v{font-size:22px;font-weight:700;letter-spacing:.02em}
+.po .po-from{font-size:10px;line-height:1.55;text-align:right;color:#3a4252;min-width:230px}
+.po .po-from b{font-size:13px;color:#1b2230}
+.po .po-info{width:100%;margin-bottom:12px;font-size:11px}
+.po .po-info th{width:72px;background:#EEF1F6;color:#142A5E;font-weight:700;text-align:left;padding:5px 8px;border:1px solid #C9CED8;white-space:nowrap}
+.po .po-info td{padding:5px 8px;border:1px solid #C9CED8;vertical-align:top}
+.po .po-items{width:100%;font-size:10.5px;margin-bottom:12px}
+.po .po-items th{background:#142A5E;color:#fff;font-weight:700;padding:5px 6px;text-align:center;border:1px solid #142A5E;white-space:nowrap}
+.po .po-items td{padding:4px 6px;border:1px solid #D3D8E1;vertical-align:middle}
+.po .po-items tbody tr:nth-child(even) td{background:#F6F8FB}
+.po .po-items .n{text-align:center;color:#7a8396;width:22px}
+.po .po-items .c{white-space:nowrap;width:64px}
+.po .po-items .r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.po .po-items .nt{color:#4a5262;font-size:9.5px;width:118px}
+.po .po-zai{display:inline-block;margin-left:5px;font-size:8.5px;font-weight:700;color:#2C7A4B;border:1px solid #2C7A4B;border-radius:2px;padding:0 3px;line-height:1.45;vertical-align:1px}
+.po .po-bottom{display:flex;gap:16px;align-items:flex-start}
+.po .po-terms{flex:1;font-size:10px;color:#3a4252;border:1px solid #D3D8E1;border-radius:3px;padding:7px 10px;line-height:1.6}
+.po .po-terms b{color:#142A5E}
+.po .po-sum{width:250px;font-size:11px}
+.po .po-sum th{text-align:left;font-weight:400;padding:4px 8px;border-bottom:1px solid #D3D8E1;color:#3a4252}
+.po .po-sum td{text-align:right;padding:4px 8px;border-bottom:1px solid #D3D8E1;font-variant-numeric:tabular-nums}
+.po .po-sum tr.g th,.po .po-sum tr.g td{font-weight:700;font-size:13px;color:#142A5E;border-bottom:2px solid #142A5E}
+.po .po-foot{margin-top:14px;font-size:9px;color:#8a92a3;text-align:right}
+`;
+const DEFAULT_PRICES = [
+  {"id": "p_cross_tema", "cat": "表装工事", "name": "クロス張替え（手間のみ）", "unit": "㎡", "unitPrice": 600},
+  {"id": "p_001", "cat": "表装工事", "name": "クロス貼替(壁)", "unit": "㎡", "unitPrice": 600},
+  {"id": "p_002", "cat": "表装工事", "name": "クロス貼替(天井)", "unit": "㎡", "unitPrice": 600},
+  {"id": "p_003", "cat": "表装工事", "name": "クロス貼替(天井・壁)", "unit": "㎡", "unitPrice": 600},
+  {"id": "p_004", "cat": "表装工事", "name": "クロス部分貼替", "unit": "㎡", "unitPrice": 600},
+  {"id": "p_007", "cat": "表装工事", "name": "カーペット貼替", "unit": "㎡", "unitPrice": 900},
+  {"id": "p_008", "cat": "表装工事", "name": "クッションフロア貼替", "unit": "㎡", "unitPrice": 900},
+  {"id": "p_010", "cat": "表装工事", "name": "ソフト巾木貼替　60㍉", "unit": "m", "unitPrice": 300, "note": "業者材工"},
+  {"id": "p_011", "cat": "表装工事", "name": "ソフト巾木貼替　75㍉", "unit": "m", "unitPrice": 300, "note": "業者材工"},
+  {"id": "p_012", "cat": "クリーニング", "name": "クロスクリーニング", "unit": "式", "unitPrice": 2000},
+  {"id": "p_013", "cat": "クリーニング", "name": "フローリングWAX剥離洗浄", "unit": "式", "unitPrice": 8000},
+  {"id": "p_014", "cat": "クリーニング", "name": "ハウスクリーニング（〜25㎡)", "unit": "式", "unitPrice": 15000},
+  {"id": "p_015", "cat": "クリーニング", "name": "ハウスクリーニング（〜30㎡)", "unit": "式", "unitPrice": 15000},
+  {"id": "p_016", "cat": "クリーニング", "name": "ハウスクリーニング（〜40㎡)", "unit": "式", "unitPrice": 19000},
+  {"id": "p_017", "cat": "クリーニング", "name": "ハウスクリーニング（〜50㎡)", "unit": "式", "unitPrice": 23000},
+  {"id": "p_018", "cat": "クリーニング", "name": "ハウスクリーニング（〜60㎡)", "unit": "式", "unitPrice": 27000},
+  {"id": "p_019", "cat": "クリーニング", "name": "ハウスクリーニング（〜70㎡)", "unit": "式", "unitPrice": 30000},
+  {"id": "p_020", "cat": "クリーニング", "name": "鏡水垢洗浄", "unit": "式", "unitPrice": 2000},
+  {"id": "p_021", "cat": "クリーニング", "name": "エアコン内部洗浄", "unit": "台", "unitPrice": 5000},
+  {"id": "p_023", "cat": "クリーニング", "name": "ロボ付きエアコン内部洗浄", "unit": "台", "unitPrice": 12000},
+  {"id": "p_022", "cat": "雑工事", "name": "エアコンパテ交換", "unit": "箇所", "unitPrice": 500},
+  {"id": "p_024", "cat": "雑工事", "name": "網戸貼替", "unit": "枚", "unitPrice": 1500},
+  {"id": "p_025", "cat": "雑工事", "name": "網戸貼替【幅広】", "unit": "個", "unitPrice": 2500},
+  {"id": "p_035", "cat": "雑工事", "name": "菊割れゴム設置(小)", "unit": "個", "unitPrice": 400},
+  {"id": "p_036", "cat": "雑工事", "name": "菊割れゴム設置(大)", "unit": "個", "unitPrice": 600},
+  {"id": "p_037", "cat": "雑工事", "name": "水切籠設置【小】", "unit": "個", "unitPrice": 700},
+  {"id": "p_056", "cat": "雑工事", "name": "換気口レジスター交換", "unit": "台", "unitPrice": 500},
+  {"id": "p_061", "cat": "雑工事", "name": "消化器処分", "unit": "式", "unitPrice": 2000, "note": "コシカ処分費用"},
+  {"id": "p_033", "cat": "設備工事", "name": "ワンタッチ式蛇口交換", "unit": "式", "unitPrice": 500},
+  {"id": "p_034", "cat": "設備工事", "name": "緊急止弁付蛇口交換", "unit": "式", "unitPrice": 500},
+  {"id": "p_038", "cat": "設備工事", "name": "シャワーヘッド交換", "unit": "式", "unitPrice": 500},
+  {"id": "p_039", "cat": "設備工事", "name": "シャワーホース交換", "unit": "式", "unitPrice": 500},
+  {"id": "p_040", "cat": "設備工事", "name": "シャワーホースセット交換", "unit": "式", "unitPrice": 500, "note": "クリーム"},
+  {"id": "p_041", "cat": "設備工事", "name": "シャワーヘッドパッキン交換", "unit": "式", "unitPrice": 1000},
+  {"id": "p_042", "cat": "設備工事", "name": "コーキング打替", "unit": "式", "unitPrice": 1500},
+  {"id": "p_043", "cat": "設備工事", "name": "洗面台コーキング打替", "unit": "式", "unitPrice": 1500},
+  {"id": "p_044", "cat": "設備工事", "name": "壁面コーキング打替", "unit": "式", "unitPrice": 5000},
+  {"id": "p_045", "cat": "設備工事", "name": "水栓パッキン交換", "unit": "箇所", "unitPrice": 1500},
+  {"id": "p_059", "cat": "設備工事", "name": "壁付きシングルレバー交換", "unit": "式", "unitPrice": 12000},
+  {"id": "p_060", "cat": "設備工事", "name": "シングルレバー水栓交換", "unit": "台", "unitPrice": 8000, "note": "MOZU"},
+  {"id": "p_062", "cat": "設備工事", "name": "水栓カートリッジ･パッキン交換", "unit": "式", "unitPrice": 1000},
+  {"id": "p_026", "cat": "電気工事", "name": "電球交換【シリカ球60W】", "unit": "個", "unitPrice": 200},
+  {"id": "p_027", "cat": "電気工事", "name": "電球交換【シリカ球40W】", "unit": "個", "unitPrice": 200},
+  {"id": "p_028", "cat": "電気工事", "name": "電球交換【ミニクリプトン球60W】", "unit": "個", "unitPrice": 300},
+  {"id": "p_029", "cat": "電気工事", "name": "電球交換【ミニクリプトン球40W】", "unit": "個", "unitPrice": 300},
+  {"id": "p_030", "cat": "電気工事", "name": "蛍光灯交換【FL20W】", "unit": "本", "unitPrice": 500},
+  {"id": "p_031", "cat": "電気工事", "name": "蛍光灯交換【FL15W】", "unit": "本", "unitPrice": 500},
+  {"id": "p_032", "cat": "電気工事", "name": "照明紐交換", "unit": "箇所", "unitPrice": 300},
+  {"id": "p_052", "cat": "電気工事", "name": "アイホン製インターホン交換(JS-12E)", "unit": "式", "unitPrice": 5000, "note": "MOZU"},
+  {"id": "p_053", "cat": "大工工事", "name": "通気口取付補強", "unit": "式", "unitPrice": 1000},
+  {"id": "p_054", "cat": "大工工事", "name": "建付調整", "unit": "式", "unitPrice": 1000},
+  {"id": "p_055", "cat": "大工工事", "name": "ドアスコープ交換", "unit": "式", "unitPrice": 1500},
+  {"id": "p_057", "cat": "大工工事", "name": "フローリング簡易補修", "unit": "式", "unitPrice": 3000},
+  {"id": "p_058", "cat": "大工工事", "name": "リペア補修", "unit": "式", "unitPrice": 15000},
+];
+const DEFAULT_SELL = {"クロス貼替(壁)": 1050, "クロス貼替(天井)": 1050, "クロス貼替(天井・壁)": 1050, "クロス部分貼替": 1050, "カーペット貼替": 3000, "クッションフロア貼替": 3300, "ソフト巾木貼替　60㍉": 530, "ソフト巾木貼替　75㍉": 530, "クロスクリーニング": 3000, "フローリングWAX剥離洗浄": 12000, "ハウスクリーニング（〜25㎡)": 18000, "ハウスクリーニング（〜30㎡)": 18400, "ハウスクリーニング（〜40㎡)": 28000, "ハウスクリーニング（〜50㎡)": 32000, "ハウスクリーニング（〜60㎡)": 35000, "ハウスクリーニング（〜70㎡)": 45000, "鏡水垢洗浄": 3000, "エアコン内部洗浄": 7500, "エアコンパテ交換": 800, "ロボ付きエアコン内部洗浄": 18000, "網戸貼替": 2800, "網戸貼替【幅広】": 3500, "電球交換【シリカ球60W】": 500, "電球交換【シリカ球40W】": 500, "電球交換【ミニクリプトン球60W】": 700, "電球交換【ミニクリプトン球40W】": 700, "蛍光灯交換【FL20W】": 800, "蛍光灯交換【FL15W】": 800, "照明紐交換": 500, "ワンタッチ式蛇口交換": 2500, "緊急止弁付蛇口交換": 4500, "菊割れゴム設置(小)": 700, "菊割れゴム設置(大)": 1000, "水切籠設置【小】": 1000, "シャワーヘッド交換": 3000, "シャワーホース交換": 6000, "シャワーホースセット交換": 8000, "シャワーヘッドパッキン交換": 1500, "コーキング打替": 3000, "洗面台コーキング打替": 3000, "壁面コーキング打替": 5000, "水栓パッキン交換": 2500, "アイホン製インターホン交換(JS-12E)": 25000, "通気口取付補強": 1500, "建付調整": 1500, "ドアスコープ交換": 2500, "換気口レジスター交換": 3500, "フローリング簡易補修": 5000, "リペア補修": 28000, "壁付きシングルレバー交換": 32000, "シングルレバー水栓交換": 28000, "消化器処分": 3000, "水栓カートリッジ･パッキン交換": 10000};
+const EST_EXTRA = [{"id": "x_000", "cat": "表装工事", "name": "クロス部分貼替(10㎡未満)", "unit": "式", "sell": 10500, "cost": 600, "note": ""}, {"id": "x_001", "cat": "表装工事", "name": "クロス貼替(天井・壁)(10㎡未満)", "unit": "式", "sell": 10500, "cost": 600, "note": ""}, {"id": "x_002", "cat": "表装工事", "name": "クッションフロア貼替(3㎡未満)", "unit": "式", "sell": 9900, "cost": 900, "note": ""}, {"id": "x_003", "cat": "諸経費", "name": "退去立会費", "unit": "式", "sell": 3000, "cost": 0, "note": ""}, {"id": "x_004", "cat": "諸経費", "name": "諸経費", "unit": "式", "sell": 5000, "cost": 0, "note": ""}, {"id": "x_005", "cat": "諸経費", "name": "残地物処分", "unit": "式", "sell": 0, "cost": 0, "note": "金額は都度"}, {"id": "x_006", "cat": "雑工事", "name": "電池交換", "unit": "箇所", "sell": 500, "cost": 0, "note": ""}, {"id": "x_007", "cat": "設備工事", "name": "エルボ設置", "unit": "個", "sell": 1000, "cost": 0, "note": ""}, {"id": "x_008", "cat": "設備工事", "name": "エルボ金具設置", "unit": "個", "sell": 300, "cost": 0, "note": ""}, {"id": "x_009", "cat": "設備工事", "name": "泡防止パイプ設置", "unit": "個", "sell": 1000, "cost": 0, "note": ""}, {"id": "x_010", "cat": "設備工事", "name": "便座ゴム取付", "unit": "式", "sell": 1200, "cost": 0, "note": ""}, {"id": "x_011", "cat": "設備工事", "name": "水栓泡沫キャップ", "unit": "式", "sell": 1000, "cost": 0, "note": ""}, {"id": "x_012", "cat": "和室工事", "name": "畳表替", "unit": "枚", "sell": 4500, "cost": 3900, "note": ""}, {"id": "x_013", "cat": "和室工事", "name": "襖表貼替", "unit": "枚", "sell": 3500, "cost": 2500, "note": ""}, {"id": "x_014", "cat": "和室工事", "name": "襖雲華紙貼替", "unit": "枚", "sell": 2500, "cost": 1000, "note": ""}, {"id": "x_015", "cat": "和室工事", "name": "襖紙+雲ヶ紙貼替", "unit": "本", "sell": 3800, "cost": 0, "note": ""}, {"id": "x_016", "cat": "和室工事", "name": "クロス襖貼替", "unit": "枚", "sell": 3500, "cost": 0, "note": ""}, {"id": "x_017", "cat": "和室工事", "name": "天袋表貼替", "unit": "枚", "sell": 2800, "cost": 1250, "note": ""}, {"id": "x_018", "cat": "和室工事", "name": "天袋雲華紙貼替", "unit": "枚", "sell": 2300, "cost": 500, "note": ""}, {"id": "x_019", "cat": "和室工事", "name": "天袋表裏貼替", "unit": "本", "sell": 2800, "cost": 0, "note": ""}, {"id": "x_020", "cat": "和室工事", "name": "畳交換", "unit": "枚", "sell": 18000, "cost": 10600, "note": ""}, {"id": "x_021", "cat": "電気工事", "name": "シーリングライト交換", "unit": "台", "sell": 9000, "cost": 0, "note": "MOZU"}, {"id": "x_022", "cat": "電気工事", "name": "パナソニック製IHコンロ(KZ-11C)", "unit": "台", "sell": 28000, "cost": 0, "note": "MOZU"}, {"id": "x_023", "cat": "電気工事", "name": "小型シーリング取付", "unit": "式", "sell": 12000, "cost": 0, "note": ""}, {"id": "x_024", "cat": "雑工事", "name": "カーテンレール新規取付", "unit": "ヶ所", "sell": 4500, "cost": 0, "note": ""}, {"id": "x_025", "cat": "電気工事", "name": "手元灯交換FL-15サイズ", "unit": "式", "sell": 15000, "cost": 0, "note": "MOZU"}, {"id": "x_026", "cat": "設備工事", "name": "ウォシュレット交換", "unit": "台", "sell": 28000, "cost": 0, "note": "MOZU"}, {"id": "x_027", "cat": "表装工事", "name": "フロアタイル上貼", "unit": "㎡", "sell": 5200, "cost": 0, "note": ""}, {"id": "x_028", "cat": "雑工事", "name": "消化器交換", "unit": "式", "sell": 8000, "cost": 0, "note": ""}, {"id": "x_029", "cat": "設備工事", "name": "壁付き換気扇交換", "unit": "式", "sell": 18000, "cost": 0, "note": ""}, {"id": "x_030", "cat": "雑工事", "name": "エアコンスリーブ取付", "unit": "箇所", "sell": 750, "cost": 0, "note": ""}, {"id": "x_031", "cat": "注記", "name": "パッキン・カートリッジ交換は水漏れが是正されない可能性があります。", "unit": "", "sell": 0, "cost": 0, "note": "", "noteRow": true}, {"id": "x_032", "cat": "電気工事", "name": "火災報知器交換", "unit": "ヶ所", "sell": 4000, "cost": 0, "note": ""}, {"id": "x_033", "cat": "和室工事", "name": "障子貼替 小", "unit": "枚", "sell": 2500, "cost": 0, "note": ""}, {"id": "x_034", "cat": "電気工事", "name": "22サイズエアコン交換", "unit": "台", "sell": 85000, "cost": 0, "note": ""}];
+const EST_LOCS = ["洋室", "洋室収納", "通路", "通路収納", "トイレ", "洗濯機置場", "洗面所", "和室", "キッチン", "DK", "LD", "LDK", "室内", "洋室①", "洋室②", "洋室③", "汚損箇所", "浴室", "玄関"];
+const estAmt = r => r.noteRow ? 0 : Math.round((Number(r.qty) || 0) * (Number(r.price) || 0));
+function estTotals(e){
+  const rows = (e.rows || []).filter(r => !r.noteRow), sub = rows.reduce((a, r) => a + estAmt(r), 0), tax = Math.floor(sub * TAX_RATE);
+  const cost = rows.reduce((a, r) => a + Math.round((Number(r.qty) || 0) * (Number(r.cost) || 0)), 0);
+  return {sub, tax, total:sub + tax, cost, profit:sub - cost, rate:sub ? (sub - cost) / sub : 0};
+}
+function estDocHtml(e, type, seal, billing = {}){
+  if(type === "invoice" && e.status === "tachiai" && e.billRows?.length) e = {...e, rows:e.billRows};
+  if(type === "est" && e.estRows?.length) e = {...e, rows:e.estRows};   // 受注後も、見積書は出したときの内容
+  if(type === "ukesho" && e.ukeIssuedAt) e = {...e, issuedAt:e.ukeIssuedAt};
+  const t = estTotals(e), c = COMPANY, rows = e.rows || [], n = Math.max(28, rows.length);
+  const staff = e.staff?.name ? `${esc(e.staff.name)}${e.staff.phone ? `（${esc(e.staff.phone)}）` : ""}` : "";
+  const to = `<div class="es-to"><span class="es-co">${esc(e.company || "")}</span><span class="es-hon">${esc(e.honor || "御中")}</span>${type === "invoice" ? "" : `<span class="es-tan">担当；</span><span class="es-person">${esc(e.person || "")}</span><span class="es-hon">様</span>`}</div>`;
+  const prop = `<table class="es-prop"><tr><th>物件名称${type === "invoice" ? "；" : "："}</th><td>${esc(e.building || "")}</td><td class="es-room">${esc(e.room || "")}</td><td class="es-kind">${esc(e.kind || "")}</td></tr>
+    <tr><th>物件所在地${type === "invoice" ? "；" : "："}</th><td colspan="3">${esc(e.address || "")}</td></tr></table>`;
+  const from = (big = false) => `<div class="es-from${big ? " big" : ""}">${seal ? `<img class="es-seal" src="${esc(seal)}" alt="">` : ""}
+    ${type === "invoice" && billing.invoiceNumber ? `<div class="es-tno">${esc(billing.invoiceNumber)}</div>` : ""}<b>${esc(c.name)}</b>
+    ${big ? `<div>〒${esc(c.zip)}</div>` : ""}<div>${esc(c.address)}</div>${c.address2 ? `<div>${esc(c.address2)}</div>` : ""}<div>TEL；${esc(c.tel)}${big ? "</div><div>" : "　"}FAX；${esc(c.fax)}</div>
+    ${!big && type !== "invoice" && staff ? `<div class="es-staff">工事担当；　${staff}</div>` : ""}</div>`;
+  const head = type === "invoice"
+    ? `<th>箇所</th><th>施 工 内 容</th><th>仕様</th><th>数 量</th><th>単価</th><th>金額</th>`
+    : `<th class="no">No</th><th>箇所</th><th>施 工 内 容</th><th>仕様</th><th>数 量</th><th>単価</th><th>金額</th>`;
+  const body = Array.from({length:n}, (_, k) => { const r = rows[k];
+    const cells = !r ? `<td></td><td></td><td></td><td></td><td></td><td></td>`
+      : r.noteRow ? `<td></td><td colspan="5" class="es-note">${esc(r.name)}</td>`
+      : `<td>${esc(r.loc)}</td><td>${esc(r.name)}</td><td>${esc(r.spec)}</td><td class="c">${r.qty !== "" && r.qty != null ? `${fmtQty(r.qty)}　${esc(r.unit)}` : esc(r.unit)}</td><td class="r">${r.price !== "" && r.price != null ? yenFull(r.price) : ""}</td><td class="r">${r.price !== "" && r.price != null && r.qty !== "" ? yenFull(estAmt(r)) : ""}</td>`;
+    return `<tr>${type === "invoice" ? "" : `<td class="no">${k + 1}</td>`}${cells}</tr>`; }).join("");
+  const table = `<table class="es-items${type === "invoice" ? " gray" : ""}"><thead><tr>${head}</tr></thead><tbody>${body}</tbody>
+    ${type === "invoice" ? `<tfoot><tr><td colspan="4"></td><th>小計</th><td class="r">${yenFull(t.sub)}</td></tr><tr><td colspan="4"></td><th>消費税(税率10%)</th><td class="r">${yenFull(t.tax)}</td></tr><tr><td colspan="4"></td><th>合計</th><td class="r">${yenFull(t.total)}</td></tr></tfoot>`
+      : `<tfoot><tr><td class="no"></td><td colspan="6" class="r">${yenFull(t.sub)}</td></tr></tfoot>`}</table>`;
+  if(type === "invoice") return `<div class="pdfdoc es inv">
+    <div class="es-invhead">${to}<div class="es-invt"><b>御請求書</b><span>No.　${esc(e.no || "")}</span></div></div>
+    <div class="es-mid"><div class="es-left">${prop}<p class="es-greet">下記のとおり御請求申し上げます。</p>
+      <div class="es-billbox"><span>ご請求金額</span><b>${yenFull(t.total)}</b></div></div>${from()}</div>
+    ${table}
+    <div class="es-bank">${esc([billing.bank ? `振込先；${billing.bank}` : "", `支払条件；${e.terms || billing.terms || BILLING_DEFAULT.terms}`].filter(Boolean).join("　"))}</div></div>`;
+  const bar = type === "ukesho" ? "発　注　請　書" : "見　　積　　書";
+  return `<div class="pdfdoc es">
+    <div class="es-bar">${bar}</div>
+    <div class="es-sub"><span>NO：　　${esc(e.no || "")}${e.rev ? `　（訂正${e.rev}）` : ""}</span><span>発行日　${e.issuedAt ? fmtDate(e.issuedAt) : ""}</span></div>
+    ${type === "ukesho" ? `${to}${prop}` : `<div class="es-mid"><div class="es-left">${to}<p class="es-greet">下記の通り、お見積もり申し上げます。</p>${prop}</div>${from()}</div>`}
+    <table class="es-sum"><tr><th>${type === "ukesho" ? "請負金額（税込）" : "お見積金額（税込）"}</th><td class="es-big">${yenFull(t.total)}</td><th class="es-taxl">税率１０％</th><td class="r">${yenFull(t.tax)}</td></tr></table>
+    ${type === "ukesho" ? `<div class="es-line2"><span>下記記載の内容にて工事を受注致します。</span><span>工事期間；　${e.periodStart ? fmtDate(e.periodStart) : ""}${e.periodEnd && e.periodEnd !== e.periodStart ? ` 〜 ${fmtDate(e.periodEnd)}` : ""}　まで</span></div>`
+      : `<div class="es-line2 under"><span>見積有効期限　　${esc(e.validity || BILLING_DEFAULT.validity)}</span><span>お支払い条件　　${esc(e.terms || BILLING_DEFAULT.terms)}</span></div>`}
+    ${table}
+    ${type === "ukesho" ? `<div class="es-ukefoot"><div class="es-ukeleft"><div>工事概要：${esc(e.kind || "")}</div><div>支払条件：${esc(e.terms || BILLING_DEFAULT.terms)}</div><div>有効期限：発行後30日</div></div>${from(true)}</div>${staff ? `<div class="es-ukestaff">工事担当；　${staff}</div>` : ""}`
+      : `<div class="es-order"><div class="es-order-h"><b>【工事発注書】</b><span>令和　　年　　月　　日</span></div><p>上記工事内容、金額を了承し工事を発注致します。</p><div class="es-sign"><span>御社名　；</span><i></i><span>担当者　；</span><i class="s"></i></div></div>`}
+    <div class="es-endline"></div></div>`;
+}
+const moAmount = i => Math.round((Number(i.qty) || 0) * (Number(i.unitPrice) || 0));
+function moTotals(o){
+  const items = (o.items || []).reduce((a, i) => a + moAmount(i), 0), parking = 0;
+  const base = items + parking, tax = Math.floor(base * TAX_RATE);
+  return {items, parking, base, tax, total:base + tax};
+}
+const CIRCLED = k => k < 20 ? String.fromCharCode(0x2460 + k) : String(k + 1);
+function rfCompany(staff, terms, seal){
+  const c = COMPANY;
+  return `<div class="rf-from">${seal ? `<img class="rf-seal" src="${esc(seal)}" alt="">` : ""}<b>${esc(c.name)}</b>
+    ${staff?.name ? `<div class="rf-staff">弊社担当：　${esc(staff.name)}${staff.phone ? `（${esc(staff.phone)}）` : ""}</div>` : ""}
+    <div>〒${esc(c.zip)}</div><div>${esc(c.address)}</div>${c.address2 ? `<div>${esc(c.address2)}</div>` : ""}
+    <div>TEL：${esc(c.tel)}　FAX：${esc(c.fax)}</div>${terms ? `<div>支払条件：${esc(terms)}</div>` : ""}</div>`;
+}
+function rfWorkHtml(o, job, priv, seal){
+  const t = moTotals(o), n = Math.max(22, o.items.length), priced = o.items.some(i => i.unitPrice != null && i.unitPrice !== "");
+  const others = String(o.others || "").split(/[、,，]/).map(x => x.trim()).filter(Boolean);
+  return `<div class="pdfdoc rf">
+    <div class="rf-bar">発　注　書</div>
+    <div class="rf-sub"><span>NO：　${esc(job.jobNo || "")}</span><span>発行日　${fmtDate(o.issuedAt)}</span></div>
+    <div class="rf-head"><div class="rf-left"><div class="rf-to wide"><b>${esc(o.supplierName)}</b><span>${esc(o.honor || "御中")}</span></div>
+      <table class="rf-info small"><tr><th>物件名：</th><td>${esc(priv.building || job.title)}</td><td class="rm">${esc(priv.room)}</td></tr>
+        <tr><th>物件所在地：</th><td colspan="2">${esc(priv.address)}</td></tr>
+        <tr><th>オートロック：</th><td>${esc(priv.autolock)}　<b>部屋鍵：</b>${esc(priv.keyInfo)}</td><td></td></tr>
+        <tr><th>作業予定日：</th><td colspan="2">${esc(o.workDate)}</td></tr></table></div>
+      ${rfCompany(job.staff, o.terms, seal)}</div>
+    <div class="rf-wrap"><table class="rf-items work"><thead><tr><th>箇所</th><th>内容</th><th>仕様</th><th>数　量</th><th>単価</th><th>金額</th></tr></thead><tbody>
+      ${Array.from({length:n}, (_, k) => { const i = o.items[k]; return `<tr>${i ? `<td>${esc(i.loc)}</td><td>${esc(i.name)}</td><td>${esc(i.spec)}</td><td class="c">${fmtQty(i.qty)}　${esc(i.unit)}</td><td class="r">${i.unitPrice != null ? yenFull(i.unitPrice) : ""}</td><td class="r">${i.unitPrice != null ? yenFull(moAmount(i)) : ""}</td>` : "<td></td><td></td><td></td><td></td><td></td><td></td>"}</tr>`; }).join("")}
+    </tbody></table>${priced ? "" : `<div class="rf-ask">御見積もりください。</div>`}</div>
+    <div class="rf-box rf-remark"><b>【備考】　※上記項目以外に修繕が必要と思われる箇所ある場合は必ずご一報下さい。</b>${o.note ? `<div class="rf-red">${esc(o.note)}</div>` : ""}</div>
+    <table class="rf-foot"><tr><th>エレベーター：</th><td>${esc(priv.elevator)}</td><th>小計</th><td class="r">${yenFull(t.base)}</td></tr>
+      <tr><th>${o.showManager === false ? "" : "発注請元："}</th><td>${o.showManager === false ? "" : esc(priv.manager)}</td><th>税率10%　${yenFull(t.tax)}</th><td class="r">合計　<b>${yenFull(t.total)}</b></td></tr></table>
+    <div class="rf-label small">【その他施行予定業者】</div>
+    <table class="rf-others"><tr>${(others.length ? others : [""]).map(x => `<td>${esc(x)}</td>`).join("")}</tr></table>
+    <div class="rf-line"></div></div>`;
+}
+
+/* ===== 書類（ポータルと同じ書式：見積書・発注請書・御請求書・発注書。領収書は同じ系統で追加） ===== */
+const TAX_RATE=0.1;
+const BILLING_DEFAULT={validity:"発行日より1ヶ月",terms:"工事完了月末締、翌月末日支払",invoiceNumber:"",bank:""};
+const COMPANY_DEFAULT={name:"",zip:"",address:"",address2:"",tel:"",fax:"",email:"",invoiceNumber:"",bank:"",terms:BILLING_DEFAULT.terms,validity:BILLING_DEFAULT.validity,orderTerms:"作業完了の確認後、翌月末日支払",staffList:[]};
+let COMPANY={...COMPANY_DEFAULT};
+const yenFull=n=>"¥"+Math.round(Number(n)||0).toLocaleString("ja-JP");
+const fmtQty=q=>(Number(q)||0).toLocaleString("ja-JP",{maximumFractionDigits:2});
+function fmtDate(v){if(!v)return"";const d=typeof v==="number"?new Date(v):new Date(v+"T00:00:00");return isNaN(d)?String(v):`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`}
+const isoToday=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
+const DOC_TYPES=[["est","見積書"],["ukesho","発注請書"],["invoice","御請求書"],["order","発注書"],["receipt","領収書"]];
+let docCtx=null, dw=null, dirty=false, pvT=null;
+
+const docKey=(cid,jid)=>`${cid}__${jid}`;
+function estPrices(){
+  const base=DEFAULT_PRICES.map(p=>({cat:p.cat||"その他",name:p.name,unit:p.unit,sell:Number(p.sellPrice??DEFAULT_SELL[p.name]??0),cost:Number(p.unitPrice)||0}));
+  const have=new Set(base.map(p=>p.name));
+  return [...base,...EST_EXTRA.filter(x=>!have.has(x.name))].filter(p=>p.name);
+}
+let PRICE_MAP=null;const priceOf=n=>{PRICE_MAP||=new Map(estPrices().map(p=>[p.name,p]));return PRICE_MAP.get(n)};
+function splitName(name){const m=String(name||"").match(/^(.*?)[\s　]*(\d{2,4}\s*号室)/);return m?{building:m[1].trim(),room:m[2].replace(/\s/g,"")}:{building:String(name||"").replace(/\s+\d{1,2}\/\d{1,2}完了.*$/,"").trim(),room:""}}
+function blankDocs(cid,jid){
+  const c=ST.clients[cid]||{},j=(c.jobs||{})[jid]||{};const sp=splitName(j.name);if(j.building)sp.building=j.building;
+  const kind={"原状回復":"原状回復工事","修繕":"修繕工事","リフォーム":"リフォーム工事","フルリノベ":"リフォーム工事","追加工事":"修繕工事"}[j.kind]||"原状回復工事";
+  return {est:{no:j.no!=null?String(j.no):"",issuedAt:isoToday(),company:c.name||"",honor:"御中",person:"",building:sp.building,room:j.room||sp.room,kind,address:j.address||"",staff:null,validity:COMPANY.validity,terms:COMPANY.terms,periodStart:"",periodEnd:"",ukeIssuedAt:"",invIssuedAt:"",rows:[],status:"draft"},
+    orders:{},receipt:{no:"",date:isoToday(),amount:null,note:"",method:"銀行振込",paper:false}};
+}
+function loadDraft(){const k=docKey(docCtx.cid,docCtx.jid);const saved=ST.docs[k];const b=blankDocs(docCtx.cid,docCtx.jid);dw=saved?{...b,...JSON.parse(JSON.stringify(saved)),est:{...b.est,...(saved.est||{})},receipt:{...b.receipt,...(saved.receipt||{})},orders:saved.orders||{}}:b;dirty=false;if(!dw.est.address&&b.est.address)dw.est.address=b.est.address}
+function jobOf(){const c=ST.clients[docCtx.cid]||{};const j=(c.jobs||{})[docCtx.jid];return j?calc({...j,id:docCtx.jid,client:docCtx.cid,clientName:c.name},c):null}
+function orderKeys(job){return job.orders.map((o,i)=>({key:"o"+i,o,i}))}
+function orderDraft(job,i){const key="o"+i;const o=job.orders[i]||{};const e=dw.est;
+  return dw.orders[key]||{supplierName:canon(o.v)||o.v||"",honor:"御中",issuedAt:isoToday(),workDate:"",terms:COMPANY.orderTerms,note:"",others:"",items:[{loc:"",name:`${e.building||job.name} ${e.room||""}　工事一式`.trim(),spec:"",qty:1,unit:"式",unitPrice:+o.a||0}]}}
+function receiptAmt(){const t=estTotals(dw.est);if(dw.receipt.amount!=null&&dw.receipt.amount!=="")return +dw.receipt.amount;if(t.total)return t.total;const j=jobOf();const a=+(j&&j.amt)||0;return a+Math.floor(a*TAX_RATE)}
+function sealSrc(){return ST.seal||""}
+
+function docHtml(type){
+  const job=jobOf();if(!job)return"";
+  const e={...dw.est,staff:dw.est.staff};
+  if(type==="est")return estDocHtml(e,"est",sealSrc(),{...BILLING_DEFAULT,...COMPANY});
+  if(type==="ukesho")return estDocHtml({...e,issuedAt:e.ukeIssuedAt||e.issuedAt},"ukesho",sealSrc(),{...BILLING_DEFAULT,...COMPANY});
+  if(type==="invoice")return estDocHtml({...e,issuedAt:e.invIssuedAt||e.issuedAt},"invoice",sealSrc(),{...BILLING_DEFAULT,...COMPANY});
+  if(type==="order"){const o=orderDraft(job,docCtx.oi||0);return rfWorkHtml(o,{jobNo:dw.est.no,title:job.name,staff:e.staff},{building:e.building||job.name,room:e.room,address:e.address||job.address||"",autolock:job.autolock||"",keyInfo:job.keyInfo||"",elevator:job.elevator||"",manager:dw.est.company},sealSrc())}
+  if(type==="receipt")return receiptHtml(job);
+}
+function receiptHtml(job){
+  const r=dw.receipt,e=dw.est,c=COMPANY,amt=receiptAmt(),base=Math.round(amt/1.1),tax=amt-base;
+  const stamp=r.paper&&amt>=50000;
+  return `<div class="pdfdoc es inv rc">
+    <div class="rc-title">領　収　書</div>
+    <div class="rc-top"><div class="es-to"><span class="es-co">${esc(e.company||"")}</span><span class="es-hon">${esc(e.honor||"御中")}</span></div><div class="rc-meta">No.　${esc(r.no||("R-"+(e.no||"")))}<br>${fmtDate(r.date)}</div></div>
+    <div class="rc-amt"><span>金額</span><b>${yenFull(amt)}-</b><span>（税込）</span></div>
+    <p class="rc-tada">但し　${esc(r.note||`${[e.building,e.room].filter(Boolean).join(" ")||job.name}　${e.kind||"工事"}代金として`)}</p>
+    <p class="rc-ok">上記正に領収いたしました。</p>
+    <div class="rc-foot"><div class="rc-left"><table class="rc-tbl"><tr><th>内訳</th><td>10%対象　${yenFull(base)}</td></tr><tr><th>消費税</th><td>${yenFull(tax)}</td></tr><tr><th>お支払方法</th><td>${esc(r.method||"")}</td></tr><tr><th>物件</th><td>${esc([e.building,e.room].filter(Boolean).join(" "))}</td></tr></table>
+      ${stamp?`<div class="rc-stamp">収入<br>印紙</div>`:`<div class="rc-e">電子発行のため収入印紙は不要です</div>`}</div>
+      <div class="es-from big">${sealSrc()?`<img class="es-seal" src="${esc(sealSrc())}" alt="">`:""}${c.invoiceNumber?`<div class="es-tno">${esc(c.invoiceNumber)}</div>`:""}<b>${esc(c.name)}</b><div>〒${esc(c.zip)}</div><div>${esc(c.address)}</div>${c.address2?`<div>${esc(c.address2)}</div>`:""}<div>TEL；${esc(c.tel)}</div><div>FAX；${esc(c.fax)}</div></div></div>
+    <div class="es-endline"></div></div>`;
+}
+const RC_CSS=`.pdfdoc.rc .rc-title{text-align:center;font-size:26px;letter-spacing:.3em;border-bottom:3px double #111;padding-bottom:8px;margin:6px 120px 22px}.pdfdoc.rc .rc-top{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:18px}.pdfdoc.rc .rc-meta{text-align:right;font-size:11.5px;line-height:1.7}.pdfdoc.rc .rc-amt{display:flex;align-items:baseline;gap:18px;justify-content:center;border-bottom:2px solid #111;padding:10px 0;margin:6px 80px 18px}.pdfdoc.rc .rc-amt b{font-size:30px;letter-spacing:.04em}.pdfdoc.rc .rc-tada{text-align:center;font-size:13px;margin:0 0 6px}.pdfdoc.rc .rc-ok{text-align:center;font-size:13px;margin:0 0 28px}.pdfdoc.rc .rc-foot{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.pdfdoc.rc .rc-tbl{border-collapse:collapse;font-size:11.5px}.pdfdoc.rc .rc-tbl th{text-align:left;font-weight:400;color:#555;padding:3px 14px 3px 0}.pdfdoc.rc .rc-tbl td{padding:3px 0}.pdfdoc.rc .rc-stamp{margin-top:16px;width:70px;height:84px;border:1px dashed #888;display:grid;place-items:center;text-align:center;font-size:10px;color:#777}.pdfdoc.rc .rc-e{margin-top:16px;font-size:10px;color:#666}`;
+
+/* --- 書類の画面 --- */
+function openDocs(cid,jid,type="est"){docCtx={cid,jid,type,oi:0};loadDraft();drawer=null;renderDrawer();view="doc";render();window.scrollTo(0,0)}
+function vDoc(){
+  const job=jobOf();if(!job)return `<div class="panel empty">案件が見つかりません。<button class="btn" data-v="jobs">案件一覧へ</button></div>`;
+  const t=estTotals(dw.est),e=dw.est,ty=docCtx.type,ro=ST.canEdit?"":"disabled";
+  const tabs=DOC_TYPES.map(([k,l])=>`<button class="chip" data-doctype="${k}" aria-pressed="${k===ty}">${l}</button>`).join("");
+  let form="";
+  const common=`<div class="form">
+      <div class="f"><label for="d_company">宛先（管理会社）</label><input id="d_company" data-e="company" value="${esc(e.company)}" ${ro}></div>
+      <div class="f"><label for="d_honor">敬称</label><input id="d_honor" data-e="honor" value="${esc(e.honor)}" ${ro}></div>
+      <div class="f"><label for="d_building">物件名称</label><input id="d_building" data-e="building" value="${esc(e.building)}" ${ro}></div>
+      <div class="f"><label for="d_room">部屋</label><input id="d_room" data-e="room" value="${esc(e.room)}" ${ro}></div>
+      <div class="f w"><label for="d_address">物件所在地</label><input id="d_address" data-e="address" value="${esc(e.address)}" ${ro}></div>
+      <div class="f"><label for="d_no">書類番号</label><input id="d_no" data-e="no" value="${esc(e.no)}" ${ro}></div>
+      <div class="f"><label for="d_kind">工事概要</label><input id="d_kind" data-e="kind" list="dl_kinds" value="${esc(e.kind)}" ${ro}><datalist id="dl_kinds">${["退去工事","原状回復工事","修繕工事","リフォーム工事","入居前工事"].map(k=>`<option value="${k}">`).join("")}</datalist></div>
+    </div>`;
+  if(ty==="est"||ty==="ukesho"||ty==="invoice"){
+    const dateField=ty==="est"?["issuedAt","発行日"]:ty==="ukesho"?["ukeIssuedAt","請書の発行日"]:["invIssuedAt","請求日"];
+    form=`${common}
+    <div class="form">
+      <div class="f"><label for="d_date">${dateField[1]}</label><input type="date" id="d_date" data-e="${dateField[0]}" value="${esc(e[dateField[0]]||e.issuedAt)}" ${ro}></div>
+      ${ty==="est"?`<div class="f"><label for="d_person">先方の担当者</label><input id="d_person" data-e="person" value="${esc(e.person)}" ${ro}></div><div class="f"><label for="d_valid">見積有効期限</label><input id="d_valid" data-e="validity" value="${esc(e.validity)}" ${ro}></div>`:""}
+      ${ty==="ukesho"?`<div class="f"><label for="d_ps">工期（開始）</label><input type="date" id="d_ps" data-e="periodStart" value="${esc(e.periodStart)}" ${ro}></div><div class="f"><label for="d_pe">工期（終了）</label><input type="date" id="d_pe" data-e="periodEnd" value="${esc(e.periodEnd)}" ${ro}></div>`:""}
+      <div class="f"><label for="d_terms">支払条件</label><input id="d_terms" data-e="terms" value="${esc(e.terms)}" ${ro}></div>
+      <div class="f"><label for="d_staff">工事担当（Refore）</label><select id="d_staff" ${ro}><option value="">—</option>${(COMPANY.staffList||[]).map((s,i)=>`<option value="${i}" ${e.staff?.name===s.name?"selected":""}>${esc(s.name)}</option>`).join("")}</select></div>
+    </div>
+    <div class="f"><label>明細 <span class="note">施工内容を一覧から選ぶと、単位と見積単価が入ります。見積書・発注請書・御請求書で共通です</span></label>
+      <div class="tw"><table class="rows"><tr><th class="l">箇所</th><th class="l">施工内容</th><th class="l">仕様</th><th>数量</th><th class="l">単位</th><th>単価</th><th>金額</th><th></th></tr>
+      ${e.rows.map((r,i)=>`<tr>${r.noteRow?`<td></td><td colspan="5"><input data-r="${i}" data-rf="name" value="${esc(r.name)}" aria-label="注記" ${ro}></td><td></td>`:`<td><input data-r="${i}" data-rf="loc" list="dl_locs" value="${esc(r.loc)}" aria-label="箇所" style="width:86px" ${ro}></td><td><input data-r="${i}" data-rf="name" list="dl_items" value="${esc(r.name)}" aria-label="施工内容" style="min-width:190px" ${ro}></td><td><input data-r="${i}" data-rf="spec" value="${esc(r.spec)}" aria-label="仕様" style="width:90px" ${ro}></td><td><input data-r="${i}" data-rf="qty" inputmode="decimal" value="${esc(r.qty)}" aria-label="数量" style="width:64px;text-align:right" ${ro}></td><td><input data-r="${i}" data-rf="unit" list="dl_units" value="${esc(r.unit)}" aria-label="単位" style="width:52px" ${ro}></td><td><input data-r="${i}" data-rf="price" inputmode="numeric" value="${esc(r.price)}" aria-label="単価" style="width:84px;text-align:right" ${ro}></td><td data-amt="${i}">${yen(estAmt(r))}</td>`}<td>${ST.canEdit?`<button class="x" data-rrm="${i}" aria-label="この行を削除">×</button>`:""}</td></tr>`).join("")}
+      </table></div>
+      <datalist id="dl_items">${estPrices().map(p=>`<option value="${esc(p.name)}">${esc(p.cat)}　${p.sell?yen(p.sell):""}</option>`).join("")}</datalist>
+      <datalist id="dl_locs">${EST_LOCS.map(l=>`<option value="${esc(l)}">`).join("")}</datalist>
+      <datalist id="dl_units">${["式","㎡","m","枚","台","箇所","ヶ所","個","本","室","セット","日","人工"].map(u=>`<option value="${u}">`).join("")}</datalist>
+      ${ST.canEdit?`<div class="chips" style="margin-top:6px"><button class="btn sm" id="addRow">行を追加</button><button class="btn sm" id="addNote">注記を追加</button>${!e.rows.length&&job.amt?`<button class="btn sm" id="oneRow">請負金額（${yen(job.amt)}）で一式の行を入れる</button>`:""}</div>`:""}
+    </div>
+    <div class="sum"><span>小計（税抜）</span><span id="t_sub">${yen(t.sub)}</span><span>消費税（10%）</span><span id="t_tax">${yen(t.tax)}</span><span class="big">合計</span><span class="big" id="t_total">${yen(t.total)}</span><span>原価（実行単価）・Reforeだけに表示</span><span id="t_cost">${yen(t.cost)}</span><span>粗利</span><span id="t_profit">${yen(t.profit)}（${pct(t.rate)}）</span></div>
+    ${ST.canEdit?`<div class="chips"><button class="btn" id="toContract">請負金額に反映（${yen(t.sub)}）</button><span class="note" style="align-self:center">今の請負金額 ${yen(job.amt)}</span></div>`:""}`;
+  }
+  if(ty==="order"){
+    const ks=orderKeys(job);
+    if(!ks.length)form=`<p class="empty">この案件にはまだ発注業者がありません。案件の編集画面で発注業者と金額を入れると、ここで業者ごとの発注書を作れます。</p><button class="btn" data-editjob="1">案件を編集</button>`;
+    else{const oi=Math.min(docCtx.oi||0,ks.length-1);docCtx.oi=oi;const o=orderDraft(job,oi);const mt=moTotals(o);const src=job.orders[oi];
+      form=`<div class="chips">${ks.map(k=>`<button class="chip" data-oi="${k.i}" aria-pressed="${k.i===oi}">${esc(canon(k.o.v)||"（業者名なし）")}　${yen(k.o.a)}</button>`).join("")}</div>
+      <div class="form">
+        <div class="f"><label for="o_sup">発注先</label><input id="o_sup" data-o="supplierName" value="${esc(o.supplierName)}" ${ro}></div>
+        <div class="f"><label for="o_hon">敬称</label><input id="o_hon" data-o="honor" value="${esc(o.honor)}" ${ro}></div>
+        <div class="f"><label for="o_date">発行日</label><input type="date" id="o_date" data-o="issuedAt" value="${esc(o.issuedAt)}" ${ro}></div>
+        <div class="f"><label for="o_work">作業予定日</label><input id="o_work" data-o="workDate" value="${esc(o.workDate)}" placeholder="例：10月21日〜22日" ${ro}></div>
+        <div class="f w"><label for="o_terms">支払条件</label><input id="o_terms" data-o="terms" value="${esc(o.terms)}" ${ro}></div>
+        <div class="f w"><label for="o_others">その他施行予定業者（読点で区切る）</label><input id="o_others" data-o="others" value="${esc(o.others)}" placeholder="${esc(job.orders.filter((_,k)=>k!==oi).map(x=>canon(x.v)).filter(Boolean).join("、"))}" ${ro}></div>
+        <div class="f w"><label for="o_note">備考</label><textarea id="o_note" data-o="note" rows="2" ${ro}>${esc(o.note)}</textarea></div>
+      </div>
+      <div class="f"><label>発注内容 <span class="note">金額は税抜。発注書には消費税10%を足した合計が出ます</span></label>
+        <div class="tw"><table class="rows"><tr><th class="l">箇所</th><th class="l">内容</th><th class="l">仕様</th><th>数量</th><th class="l">単位</th><th>単価</th><th>金額</th><th></th></tr>
+        ${o.items.map((it,i)=>`<tr><td><input data-oit="${i}" data-of="loc" list="dl_locs" value="${esc(it.loc)}" aria-label="箇所" style="width:86px" ${ro}></td><td><input data-oit="${i}" data-of="name" value="${esc(it.name)}" aria-label="内容" style="min-width:190px" ${ro}></td><td><input data-oit="${i}" data-of="spec" value="${esc(it.spec)}" aria-label="仕様" style="width:90px" ${ro}></td><td><input data-oit="${i}" data-of="qty" inputmode="decimal" value="${esc(it.qty)}" aria-label="数量" style="width:64px;text-align:right" ${ro}></td><td><input data-oit="${i}" data-of="unit" value="${esc(it.unit)}" aria-label="単位" style="width:52px" ${ro}></td><td><input data-oit="${i}" data-of="unitPrice" inputmode="numeric" value="${esc(it.unitPrice)}" aria-label="単価" style="width:84px;text-align:right" ${ro}></td><td data-oamt="${i}">${yen(moAmount(it))}</td><td>${ST.canEdit?`<button class="x" data-oirm="${i}" aria-label="この行を削除">×</button>`:""}</td></tr>`).join("")}</table></div>
+        <datalist id="dl_locs">${EST_LOCS.map(l=>`<option value="${esc(l)}">`).join("")}</datalist>
+        ${ST.canEdit?`<div class="chips" style="margin-top:6px"><button class="btn sm" id="addOItem">行を追加</button>${dw.est.rows.some(r=>!r.noteRow&&+r.cost)?`<button class="btn sm" id="fromEst">見積の行から入れる（実行単価）</button>`:""}</div>`:""}
+      </div>
+      <div class="sum"><span>小計（税抜）</span><span>${yen(mt.base)}</span><span>消費税（10%）</span><span>${yen(mt.tax)}</span><span class="big">合計</span><span class="big">${yen(mt.total)}</span><span>案件の発注金額</span><span>${yen(src.a)}</span></div>
+      ${ST.canEdit&&mt.base!==(+src.a||0)?`<button class="btn" id="toOrderAmt" style="align-self:flex-start">案件の発注金額を ${yen(mt.base)} にする</button>`:""}`}
+  }
+  if(ty==="receipt"){const r=dw.receipt;const t2=estTotals(dw.est);
+    form=`${common}<div class="form">
+      <div class="f"><label for="r_no">領収書番号</label><input id="r_no" data-rc="no" value="${esc(r.no)}" placeholder="${esc("R-"+(e.no||""))}" ${ro}></div>
+      <div class="f"><label for="r_date">受領日</label><input type="date" id="r_date" data-rc="date" value="${esc(r.date)}" ${ro}></div>
+      <div class="f"><label for="r_amt">金額（税込）</label><input id="r_amt" data-rc="amount" inputmode="numeric" value="${esc(r.amount??"")}" placeholder="${receiptAmt()}" ${ro}></div>
+      <div class="f"><label for="r_method">お支払方法</label><input id="r_method" data-rc="method" value="${esc(r.method)}" ${ro}></div>
+      <div class="f w"><label for="r_note">但し書き</label><input id="r_note" data-rc="note" value="${esc(r.note)}" placeholder="空欄なら「物件名 工事概要 代金として」" ${ro}></div>
+      <div class="f w"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="check" id="r_paper" ${r.paper?"checked":""} ${ro}>紙に印刷して渡す（5万円以上なら収入印紙の欄を出します）</label></div></div>
+      <p class="note">金額を空欄にすると、御請求書の合計（明細がないときは請負金額に消費税を足した額）を使います。</p>`;
+  }
+  const label=DOC_TYPES.find(x=>x[0]===ty)[1];
+  return `<div class="head"><div><p class="eyebrow"><button class="btn sm" id="docBack">← ${esc(job.clientName)}の案件へ</button></p><h1 style="margin-top:8px">${esc(job.name)}</h1><p class="note">${esc(job.clientName)}　工事番号 ${esc(job.no??"—")}　請負金額 ${yen(job.amt)}</p></div>
+    <div class="chips">${ST.canEdit?`<span class="pill ${dirty?"p-warn":"p-good"}" id="docSave" style="align-self:center">${dirty?"保存しています…":"保存済み"}</span>`:""}<button class="btn primary" id="docPdf">${label}をPDFで保存</button></div></div>
+  <div class="chips">${tabs}</div>
+  <div class="grid docgrid"><div class="panel">${form}</div>
+    <div class="panel pvpanel"><div class="ph"><h2>プレビュー</h2><span class="note">このままPDFになります</span></div><div class="pvbox" id="pvbox"><div class="pvscale" id="pvscale">${docHtml(ty)}</div></div></div></div>`;
+}
+function fitPreview(){const box=$("#pvbox"),sc=$("#pvscale");if(!box||!sc)return;const s=Math.min(1,box.clientWidth/794);sc.style.transform=`scale(${s})`;box.style.height=(sc.firstElementChild?sc.firstElementChild.offsetHeight*s:0)+"px"}
+function refreshPreview(){clearTimeout(pvT);pvT=setTimeout(()=>{const sc=$("#pvscale");if(sc){sc.innerHTML=docHtml(docCtx.type);fitPreview()}const t=estTotals(dw.est);const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};set("t_sub",yen(t.sub));set("t_tax",yen(t.tax));set("t_total",yen(t.total));set("t_cost",yen(t.cost));set("t_profit",`${yen(t.profit)}（${pct(t.rate)}）`);const sv=$("#docSave");if(sv){sv.textContent=dirty?"保存しています…":"保存済み";sv.className="pill "+(dirty?"p-warn":"p-good")}},150)}
+let docT=null;function markDirty(){dirty=true;refreshPreview();if(ST.canEdit){clearTimeout(docT);docT=setTimeout(()=>{if(dirty&&docCtx)saveDocs(true)},1200)}}
+function setOrderDraft(fn){const job=jobOf();const key="o"+docCtx.oi;const o=JSON.parse(JSON.stringify(orderDraft(job,docCtx.oi)));fn(o);dw.orders[key]=o}
+async function saveDocs(silent){
+  if(!ST.canEdit)return true;
+  try{await db.doc("docs/"+docKey(docCtx.cid,docCtx.jid)).set({...dw,updatedAt:Date.now()});dirty=false;if(!silent)toast("保存しました");refreshPreview();return true}catch(e){toast("保存できませんでした："+(e.code||e.message));return false}
+}
+let h2pP=null;
+function loadH2P(){return h2pP||=new Promise((ok,ng)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";s.onload=ok;s.onerror=()=>{h2pP=null;ng(new Error("load"))};document.head.appendChild(s)})}
+async function makePdf(){
+  const ty=docCtx.type,label=DOC_TYPES.find(x=>x[0]===ty)[1],job=jobOf();
+  if(ty==="order"&&!job.orders.length){toast("発注業者がありません");return}
+  const dl=await claude.use("downloads");
+  if(!dl){toast("この画面ではPDFを保存できません");return}
+  if(dirty)await saveDocs(true);
+  const btn=$("#docPdf");if(btn){btn.disabled=true;btn.textContent="PDFを作っています…"}
+  try{
+    await loadH2P();try{await document.fonts.ready}catch(e){}
+    const holder=document.createElement("div");holder.style.cssText="position:fixed;left:-12000px;top:0;width:794px;background:#fff";holder.innerHTML=docHtml(ty);document.body.appendChild(holder);
+    let blob;try{blob=await window.html2pdf().set({margin:0,image:{type:"jpeg",quality:0.95},html2canvas:{scale:2,backgroundColor:"#ffffff",scrollX:0,scrollY:0},jsPDF:{unit:"mm",format:"a4",orientation:"portrait"},pagebreak:{mode:["css","legacy"],avoid:["tr"]}}).from(holder.firstElementChild).outputPdf("blob")}finally{holder.remove()}
+    const who=ty==="order"?orderDraft(job,docCtx.oi).supplierName:dw.est.company;
+    const d=new Date(),ymd=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
+    const name=`${ymd}・${label}・${[dw.est.building,dw.est.room].filter(Boolean).join("")||job.name}・${who||""}`.replace(/[\\/:*?"<>|\s]+/g,"_").slice(0,90)+".pdf";
+    const r=await dl.save({filename:name,data:blob});
+    toast(r.status==="saved"?"PDFを保存しました":"PDFを渡しました");
+  }catch(e){toast(e.code==="declined"?"保存をやめました":"PDFを作れませんでした："+(e.code||e.message))}
+  finally{const b=$("#docPdf");if(b){b.disabled=false;b.textContent=label+"をPDFで保存"}}
+}
+document.addEventListener("click",async ev=>{
+  if(view!=="doc")return;const b=ev.target.closest("button");if(!b)return;const d=b.dataset;
+  if(d.doctype){docCtx.type=d.doctype;render();return}
+  if(d.oi!==undefined){docCtx.oi=+d.oi;render();return}
+  if(b.id==="docBack"){if(dirty&&!(await saveDocs(true)))return;view="client";selClient=docCtx.cid;docCtx=null;render();window.scrollTo(0,0);return}
+  if(b.id==="docSave"){saveDocs();return}
+  if(b.id==="docPdf"){makePdf();return}
+  if(b.id==="addRow"){dw.est.rows.push({loc:"",name:"",spec:"",qty:1,unit:"式",price:"",cost:0});markDirty();render();return}
+  if(b.id==="oneRow"){const j=jobOf();dw.est.rows.push({loc:"",name:`${dw.est.kind||"工事"}　一式`,spec:"",qty:1,unit:"式",price:+j.amt||0,cost:+j.oSum||0});markDirty();render();return}
+  if(b.id==="addNote"){dw.est.rows.push({noteRow:true,name:""});markDirty();render();return}
+  if(d.rrm!==undefined){dw.est.rows.splice(+d.rrm,1);markDirty();render();return}
+  if(b.id==="addOItem"){setOrderDraft(o=>o.items.push({loc:"",name:"",spec:"",qty:1,unit:"式",unitPrice:0}));markDirty();render();return}
+  if(d.oirm!==undefined){setOrderDraft(o=>o.items.splice(+d.oirm,1));markDirty();render();return}
+  if(b.id==="fromEst"){setOrderDraft(o=>{o.items=dw.est.rows.filter(r=>!r.noteRow&&+r.cost).map(r=>({loc:r.loc,name:r.name,spec:r.spec,qty:r.qty,unit:r.unit,unitPrice:+r.cost}))});markDirty();render();toast("見積の行を実行単価で入れました");return}
+  if(b.id==="toContract"){const t=estTotals(dw.est);try{await db.doc("clients/"+docCtx.cid).update({jobs:{[docCtx.jid]:{amt:t.sub}}});await saveDocs(true);toast("請負金額を "+yen(t.sub)+" にしました")}catch(e){toast("保存できませんでした")}return}
+  if(b.id==="toOrderAmt"){const job=jobOf();const mt=moTotals(orderDraft(job,docCtx.oi));const raw=(ST.clients[docCtx.cid].jobs[docCtx.jid].orders||[]).map(o=>({...o}));if(raw[docCtx.oi]){raw[docCtx.oi].a=mt.base}try{await db.doc("clients/"+docCtx.cid).update({jobs:{[docCtx.jid]:{orders:raw}}});await saveDocs(true);toast("発注金額を "+yen(mt.base)+" にしました")}catch(e){toast("保存できませんでした")}return}
+  if(d.editjob){openJob(docCtx.cid,docCtx.jid);return}
+});
+document.addEventListener("input",ev=>{
+  if(view!=="doc"||!dw)return;const t=ev.target,d=t.dataset;
+  if(d.e){dw.est[d.e]=t.value;markDirty();return}
+  if(d.r!==undefined){const r=dw.est.rows[+d.r];r[d.rf]=["qty","price"].includes(d.rf)?t.value.replace(/[,，¥\s]/g,""):t.value;
+    if(d.rf==="name"){const p=priceOf(t.value);if(p){r.unit=p.unit||r.unit;r.price=p.sell||r.price;r.cost=p.cost||0;const tr=t.closest("tr");tr.querySelector('[data-rf="unit"]').value=r.unit;tr.querySelector('[data-rf="price"]').value=r.price}}
+    const a=document.querySelector(`[data-amt="${d.r}"]`);if(a)a.textContent=yen(estAmt(r));markDirty();return}
+  if(d.o){setOrderDraft(o=>o[d.o]=t.value);markDirty();return}
+  if(d.oit!==undefined){setOrderDraft(o=>{const it=o.items[+d.oit];it[d.of]=["qty","unitPrice"].includes(d.of)?(t.value.replace(/[,，¥\s]/g,"")):t.value});const job=jobOf();const it=orderDraft(job,docCtx.oi).items[+d.oit];const c=document.querySelector(`[data-oamt="${d.oit}"]`);if(c&&it)c.textContent=yen(moAmount(it));markDirty();return}
+  if(d.rc){dw.receipt[d.rc]=d.rc==="amount"?(t.value.replace(/[,，¥\s]/g,"")||null):t.value;markDirty();return}
+});
+document.addEventListener("change",ev=>{
+  if(view!=="doc"||!dw)return;const t=ev.target;
+  if(t.id==="d_staff"){const s=(COMPANY.staffList||[])[+t.value];dw.est.staff=s?{name:s.name,phone:s.phone||""}:null;markDirty();return}
+  if(t.id==="r_paper"){dw.receipt.paper=t.checked;markDirty();return}
+});
+window.addEventListener("resize",()=>{if(view==="doc")fitPreview()});
+window.addEventListener("beforeunload",e=>{if(view==="doc"&&dirty){e.preventDefault();e.returnValue=""}});
+
+(()=>{const st=document.createElement('style');st.textContent=PDF_CSS+RC_CSS;document.head.appendChild(st)})();
+/* ===== データの読み込み ===== */
+renderTabs();
+(async()=>{
+  db=await claude.use('db');
+  const user=await claude.use('user');
+  if(!db){$('#main').innerHTML='<div class="panel empty">このページはclaude.aiで開くと、保存された収支データを表示します。</div>';return}
+  try{ST.canEdit=user?await user.canEdit():false}catch(e){ST.canEdit=false}
+  let got={c:false,p:false,s:false,h:false};
+  const done=()=>{if(got.c&&got.p&&got.s&&got.h&&!ST.ready){ST.ready=true}if(!ST.ready)return;if(view==='doc'){if(dirty)return;loadDraft()}render()};
+  const err=e=>{$('#main').innerHTML=`<div class="panel empty">データを読み込めませんでした（${esc(e.code)}）。ページを開き直してください。</div>`};
+  db.collection('clients').onSnapshot(s=>{const o={};s.docs.forEach(d=>o[d.id]=d.data());ST.clients=o;got.c=true;
+    if(drawer&&!ST.clients[drawer.cid])drawer=null;
+    if(!s.docs.length){$('#main').innerHTML='<div class="panel empty">まだ取引先がありません。設定から取引先を追加してください。</div>'}done()},err);
+  db.collection('pay').onSnapshot(s=>{ST.payAll={};s.docs.forEach(d=>ST.payAll[d.id]=d.data());got.p=true;done()},err);
+  db.doc('settings/main').onSnapshot(s=>{ST.settings=s.exists?s.data():{fy:4,staff:[],kinds:[],alias:{},staffRate:0.005};got.s=true;done()},err);
+  db.collection('docs').onSnapshot(s=>{const o={};s.docs.forEach(d=>o[d.id]=d.data());ST.docs=o;done()},err);
+  db.doc('settings/company').onSnapshot(s=>{COMPANY={...COMPANY_DEFAULT,...(s.exists?s.data():{})};done()},err);
+  db.doc('settings/seal').onSnapshot(s=>{ST.seal=s.exists?(s.data().data||''):'';done()},err);
+  db.doc('history/company').onSnapshot(s=>{ST.history=s.exists?s.data():{fys:{}};got.h=true;done()},err);
+})();
+</script>
+
+</body></html>
