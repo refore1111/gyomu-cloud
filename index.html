@@ -51,6 +51,8 @@ header.top{background:var(--brand);color:var(--on-brand);padding-block:14px 0;pa
 .gate-card b{font-family:var(--f-display);font-size:20px}
 .kibtn{background:rgba(255,255,255,.1);border:0;color:var(--on-brand);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:16px;line-height:1}
 .kibtn:hover{background:rgba(255,255,255,.2)}
+.kibtn.xbtn{width:auto;padding:0 10px;font-size:13px;font-weight:700;font-family:inherit}
+.kibtn:disabled{opacity:.6;cursor:wait}
 #extraNav a{color:var(--on-brand-muted);font-size:12px;margin-left:8px}
 .tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
 .tabs button{background:none;border:0;color:var(--on-brand-muted);padding:10px 14px;border-radius:8px 8px 0 0;cursor:pointer;white-space:nowrap;font-weight:700}
@@ -142,7 +144,7 @@ table.rows input{border:1px solid var(--line);background:var(--surface);border-r
 </style>
 
 <header class="top">
-  <div class="brandrow"><b><i></i>Refore 業務クラウド</b><span style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0"><button class="kibtn" data-ki="-1" aria-label="前の期">‹</button><span id="fyLabel">第4期 2026年8月〜2027年7月</span><button class="kibtn" data-ki="1" aria-label="次の期">›</button><span id="extraNav"></span></span></div>
+  <div class="brandrow"><b><i></i>Refore 業務クラウド</b><span style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0"><button class="kibtn" data-ki="-1" aria-label="前の期">‹</button><span id="fyLabel">第4期 2026年8月〜2027年7月</span><button class="kibtn" data-ki="1" aria-label="次の期">›</button><button class="kibtn xbtn" id="xlsxBtn" title="表示中の期の収支をExcelで保存">Excelで出力</button><span id="extraNav"></span></span></div>
   <nav class="tabs" id="tabs" aria-label="画面"></nav>
 </header>
 <main id="main"><div class="panel empty">データを読み込んでいます…</div></main>
@@ -482,17 +484,21 @@ function monthTable(rowsFor,cols,opts={}){
 }
 const yoy=(a,b)=>{const r=ratio(a,b);if(r==null)return'';return `<span class="${r>=1?'up':'down'}">${(r*100).toFixed(0)}%</span>`};
 
+/* 案件の明細がない期は、取り込んだ月ごとの合計（1〜3期など）を使う */
+function histOnly(K){K=K||fy();if(jobsAll(K).length)return null;return ST.history?.fys?.[String(K)]||null}
+function histAgg(H,ms){const o={cnt:0,sales:0,profit:0,net:0,refore:0,contract:0};for(const m of ms){const x=H[m];if(!x)continue;o.cnt+=+x.cnt||0;o.sales+=+x.sales||0;o.profit+=+x.profit||0;o.net+=+(x.net??x.profit)||0;o.refore+=+(x.refore??x.profit)||0}o.contract=o.sales;return o}
 function vCompany(){
   const js=jobsAll().filter(j=>j.m);
   const prev=prevMonths(null);
-  const rows=ms=>{const a=agg(js.filter(j=>ms.includes(j.m)));const oh=ms.reduce((s,m)=>s+overhead(m),0);const p=ms.reduce((s,m)=>{const x=prev[m];if(x){s.cnt+=x.cnt||0;s.sales+=x.sales||0;s.profit+=x.profit||0;s.net+=x.net||0}return s},{cnt:0,sales:0,profit:0,net:0});return{...a,oh,net:a.profit-oh,avgS:ratio(a.sales,a.cnt),avgP:ratio(a.profit,a.cnt),rate:ratio(a.profit,a.sales),pS:p.sales,pP:p.profit,pN:p.net,pC:p.cnt}};
+  const H=histOnly();
+  const rows=ms=>{const a=H?histAgg(H,ms):agg(js.filter(j=>ms.includes(j.m)));const oh=H?a.profit-a.net:ms.reduce((s,m)=>s+overhead(m),0);const p=ms.reduce((s,m)=>{const x=prev[m];if(x){s.cnt+=x.cnt||0;s.sales+=x.sales||0;s.profit+=x.profit||0;s.net+=x.net||0}return s},{cnt:0,sales:0,profit:0,net:0});return{...a,oh,net:a.profit-oh,avgS:ratio(a.sales,a.cnt),avgP:ratio(a.profit,a.cnt),rate:ratio(a.profit,a.sales),pS:p.sales,pP:p.profit,pN:p.net,pC:p.cnt}};
   const all=rows(MO);
-  const done=MO.filter(m=>js.some(j=>j.m===m));
+  const done=MO.filter(m=>H?H[m]?.cnt:js.some(j=>j.m===m));
   const ytd=rows(done);
   const cols=[['cnt','件数',v=>yen(v)],['sales','売上',v=>yen(v)],['pS','前年同期比',(v,r)=>yoy(r.sales,v)],['profit','利益',v=>yen(v)],['rate','利益率',v=>pct(v)],['oh','人件費・固定費',v=>yen(v)],['net','純利益',v=>`<span class="${v<0?'down':''}">${yen(v)}</span>`],['avgS','件数平均売上',v=>yen(v)],['avgP','件数平均利益',v=>yen(v)]];
   const byClient=clientsArr().map(c=>({c,a:agg(js.filter(j=>j.client===c.id))})).filter(x=>x.a.cnt).sort((a,b)=>b.a.sales-a.a.sales);
   const mx=Math.max(1,...byClient.map(x=>x.a.sales));
-  return `<div class="head"><div><p class="eyebrow">全社の月次</p><h1>第${fy()}期の収支</h1></div><span class="note">前年同期比は第${fy()-1}期の同じ月との比較です</span></div>
+  return `<div class="head"><div><p class="eyebrow">全社の月次</p><h1>第${fy()}期の収支</h1></div><span class="note">前年同期比は第${fy()-1}期の同じ月との比較です</span></div>${H?`<div class="panel"><p class="note" style="margin:0">第${fy()}期は、4期収支一覧表にある<b>月ごとの合計（件数・売上・利益・純利益）</b>を表示しています。案件ごとの明細はまだ入っていません。</p></div>`:''}
   <div class="grid kpis">
     <div class="panel kpi"><span class="l">売上（${done.length}か月累計）</span><span class="v num">¥${yen(ytd.sales)}</span><span class="s">前年同期比 ${yoy(ytd.sales,ytd.pS)||'—'}・${ytd.cnt}件</span></div>
     <div class="panel kpi"><span class="l">利益</span><span class="v num">¥${yen(ytd.profit)}</span><span class="s">利益率 ${pct(ytd.rate)}・前年同期比 ${yoy(ytd.profit,ytd.pP)||'—'}</span></div>
@@ -607,6 +613,69 @@ function vStaff(){
   <div class="panel"><h2>${esc(staffSel)}さんの月次表</h2>${monthTable(rows,cols)}</div>`;
 }
 
+/* ===== Excel出力 ===== */
+let xlsxP=null;
+function loadXLSX(){return xlsxP||=new Promise((ok,ng)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";s.onload=ok;s.onerror=()=>{xlsxP=null;ng(new Error("load"))};document.head.appendChild(s)})}
+function xlsxBook(){
+  const K=fy(),js=jobsAll(K),done=js.filter(j=>j.m),R=v=>v==null||v===''||!isFinite(v)?null:Math.round(v),P=v=>v==null||!isFinite(v)?null:Math.round(v*1000)/1000;
+  const ym=m=>`${yearOf(m)}年${m}月`;
+  const sheets=[];
+  // 1 全社月次
+  {const prev=prevMonths(null);const H=histOnly(K);const head=["月","件数","売上","利益","利益率","人件費・固定費","純利益","Refore利益","件数平均売上","件数平均利益",`前期(第${K-1}期)売上`,"前年同期比(売上)",`前期利益`];
+   const row=(label,ms)=>{const a=H?histAgg(H,ms):agg(done.filter(j=>ms.includes(j.m)));const oh=H?a.profit-a.net:ms.reduce((s,m)=>s+overhead(m),0);const ps=ms.reduce((s,m)=>s+(prev[m]?.sales||0),0),pp=ms.reduce((s,m)=>s+(prev[m]?.profit||0),0);return [label,a.cnt,R(a.sales),R(a.profit),P(ratio(a.profit,a.sales)),R(oh),R(a.profit-oh),R(a.refore),R(ratio(a.sales,a.cnt)),R(ratio(a.profit,a.cnt)),ps?R(ps):null,P(ratio(a.sales,ps)),pp?R(pp):null]};
+   const rows=[head];QS.forEach((q,i)=>{q.forEach(m=>rows.push(row(ym(m),[m])));rows.push(row(`第${i+1}四半期 合計`,q))});rows.push(row(`第${K}期 合計`,MO));
+   sheets.push(["全社月次",rows,{pctCols:[4,11]}])}
+  // 2 取引先別
+  {const cs=clientsArr();const rows=[["取引先","項目",...MO.map(m=>`${m}月`),"期合計"]];
+   for(const c of cs){const l=done.filter(j=>j.client===c.id);if(!l.length)continue;
+     for(const [k,lab] of [["cnt","件数"],["contract","請負金額"],["sales","売上"],["profit","利益"],["refore","Refore利益"]]){if(k==="contract"&&!c.rate)continue;
+       rows.push([c.name,lab,...MO.map(m=>{const a=agg(l.filter(j=>j.m===m));return a.cnt?R(a[k]):null}),R(agg(l)[k])])}}
+   sheets.push(["取引先別",rows,{}])}
+  // 3 案件一覧
+  {let maxO=0;js.forEach(j=>maxO=Math.max(maxO,j.orders.length));
+   const head=["期","完了月","年月","取引先","No.","物件名称","工事種類","請負金額","売上(手数料差引後)","発注合計","利益","利益率","立会担当","立会作業金額","雑工事担当","雑工事作業金額","Refore利益","手配","完了","住所","備考","ポータル連携"];
+   for(let i=1;i<=maxO;i++)head.push(`発注先${i}`,`発注金額${i}`);
+   const rows=[head];
+   for(const j of js.sort(sortJobs).reverse()){const r=[K,j.m?`${j.m}月`:"未完了",j.m?ym(j.m):"",j.clientName,j.no??"",j.name||"",j.kind||"",R(+j.amt),R(j.base),R(j.oSum),R(j.profit),P(ratio(j.profit,j.base)),j.tachi||"",R(j.tachiAmt)||null,j.zatsu||"",R(+j.zatsuAmt)||null,R(j.refore),j.te?"✓":"",j.done?"✓":"",j.address||"",j.memo||"",j.source==="portal"||j.auto?"✓":""];
+     j.orders.forEach(o=>r.push(canon(o.v)||"",R(+o.a)));rows.push(r)}
+   sheets.push(["案件一覧",rows,{pctCols:[11]}])}
+  // 4 業者支払表
+  {const pr=Object.values(payNow().rows||{}).filter(r=>r&&!r.deleted).sort((a,b)=>(a.order||0)-(b.order||0));
+   const rows=[["支払先","区分","純利益から引く",...MO.map(m=>`${m}月度(${payDate(m)}払)`),"合計"]];
+   for(const r of pr){const v=MO.map(m=>R(+(r.months?.[m]||0))||null);rows.push([r.name,r.kind||"",r.net?"✓":"",...v,R(v.reduce((s,x)=>s+(x||0),0))])}
+   rows.push(["合計","","",...MO.map(m=>R(pr.reduce((s,r)=>s+(+(r.months?.[m]||0)),0))),R(pr.reduce((s,r)=>s+MO.reduce((t,m)=>t+(+(r.months?.[m]||0)),0),0))]);
+   sheets.push(["業者支払表",rows,{}])}
+  // 5 担当者別
+  {const rows=[["担当者","項目",...MO.map(m=>`${m}月`),"期合計"]];
+   for(const s of (ST.settings?.staff||[])){const l=done.filter(j=>j.tachi===s);const z=m=>done.filter(j=>j.zatsu===s&&(m==null||j.m===m)).reduce((t,j)=>t+(+j.zatsuAmt||0),0);
+     const f={件数:l=>l.length,売上:l=>agg(l).sales,利益:l=>agg(l).profit,立会作業金額:l=>l.reduce((t,j)=>t+j.tachiAmt,0)};
+     for(const [lab,fn] of Object.entries(f))rows.push([s,lab,...MO.map(m=>{const x=l.filter(j=>j.m===m);return x.length?R(fn(x)):null}),R(fn(l))]);
+     rows.push([s,"雑工事作業金額",...MO.map(m=>R(z(m))||null),R(z(null))])}
+   sheets.push(["担当者別",rows,{}])}
+  return sheets;
+}
+async function exportXlsx(){
+  const b=$("#xlsxBtn");if(b){b.disabled=true;b.textContent="作っています…"}
+  try{
+    await loadXLSX();const X=window.XLSX,wb=X.utils.book_new();
+    for(const [name,rows,o] of xlsxBook()){
+      const ws=X.utils.aoa_to_sheet(rows);const rg=X.utils.decode_range(ws["!ref"]);
+      for(let r=1;r<=rg.e.r;r++)for(let c=0;c<=rg.e.c;c++){const cell=ws[X.utils.encode_cell({r,c})];if(cell&&cell.t==="n")cell.z=(o.pctCols||[]).includes(c)?"0.0%":"#,##0"}
+      ws["!cols"]=rows[0].map((h,c)=>({wch:Math.min(40,Math.max(6,...rows.slice(0,200).map(r=>String(r[c]??"").length*(/[^\x00-\xff]/.test(String(r[c]??""))?2:1)+2)))}));
+      ws["!freeze"]={xSplit:0,ySplit:1};ws["!autofilter"]=name==="案件一覧"?{ref:ws["!ref"]}:undefined;
+      X.utils.book_append_sheet(wb,ws,name);
+    }
+    const data=X.write(wb,{bookType:"xlsx",type:"array"});
+    const blob=new Blob([data],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    const d=new Date(),ymd=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,"0")}${String(d.getDate()).padStart(2,"0")}`;
+    const dl=await claude.use("downloads");if(!dl){toast("この画面では保存できません");return}
+    const r=await dl.save({filename:`収支一覧_第${fy()}期_${ymd}.xlsx`,data:blob});
+    toast(r.status==="saved"?"Excelを保存しました":"Excelを渡しました");
+  }catch(e){toast(e.code==="declined"?"保存をやめました":"Excelを作れませんでした："+(e.code||e.message))}
+  finally{const b=$("#xlsxBtn");if(b){b.disabled=false;b.textContent="Excelで出力"}}
+}
+document.addEventListener("click",e=>{if(e.target.closest("#xlsxBtn")){if(!ST.ready){toast("読み込み中です");return}exportXlsx()}});
+
 function vSettings(){
   const st=ST.settings||{};const al=Object.entries(st.alias||{}).filter(([,v])=>v).sort((a,b)=>a[1].localeCompare(b[1],'ja'));
   const names={};jobsAll().forEach(j=>j.orders.forEach(o=>{const v=(o.v||'').trim();if(v)names[v]=(names[v]||0)+1}));
@@ -719,7 +788,7 @@ document.addEventListener('click',async ev=>{
   const b=ev.target.closest('button,tr[data-job]');
   if(ev.target.id==='dr'){closeDrawer();return}
   if(!b)return;const d=b.dataset;
-  if(d.ki){ST.ki=fy()+(+d.ki);render();return}
+  if(d.ki){const k=fy()+(+d.ki);if(k<1){toast('第1期より前のデータはありません');return}ST.ki=k;render();return}
   if(d.ext&&window.extAction){window.extAction(d.ext,b);return}
   if(d.v){if(view==='doc'&&dirty&&!(await saveDocs(true)))return;view=d.v;drawer=null;renderDrawer();render();window.scrollTo(0,0);return}
   if(d.docs){if(drawer){clearTimeout(autoT);if(drawer.state==='saving')await saveJob()}const[c,i]=d.docs.split('|');openDocs(c,i);return}
